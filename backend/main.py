@@ -291,6 +291,29 @@ async def get_all_estimates():
 
     results = await _asyncio.gather(*[_estimate_with_limit(d) for d in rows_dict])
 
+    # 将实时净值写回数据库
+    try:
+        import asyncio
+        async def _sync_nav():
+            sync_db = await get_db()
+            try:
+                for r in results:
+                    if "error" in r:
+                        continue
+                    nav_val = r.get("nav", 0)
+                    nav_date_val = r.get("nav_date", "")
+                    if nav_val and nav_date_val:
+                        await sync_db.execute(
+                            "UPDATE funds SET nav=?, nav_date=?, updated_at=CURRENT_TIMESTAMP WHERE code=?",
+                            (nav_val, nav_date_val, r["code"]),
+                        )
+                await sync_db.commit()
+            finally:
+                await sync_db.close()
+        asyncio.create_task(_sync_nav())
+    except Exception:
+        pass
+
     result = {
         "funds": results,
         "count": len(results),
