@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import json
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 
@@ -17,6 +18,24 @@ from database import init_db, get_db
 from fetcher import fetch_fund_info, fetch_fund_holdings, identify_sector_from_industries, fetch_fund_theme
 from estimator import calculate_estimate
 from news_classifier import refresh_news, get_news_by_theme, get_all_themes
+
+# ── 简单内存缓存 ──
+_cache: dict = {}
+ESTIMATE_TTL = 60       # 估值缓存 60 秒（天天基金本身 ~30s 刷新一次）
+FUNDS_TTL = 300         # 基金列表缓存 5 分钟
+NEWS_TTL = 600          # 新闻缓存 10 分钟
+
+def _get_cache(key: str, ttl: int):
+    """返回缓存值或 None"""
+    if key in _cache:
+        data, ts = _cache[key]
+        if time.time() - ts < ttl:
+            return data
+        del _cache[key]
+    return None
+
+def _set_cache(key: str, data):
+    _cache[key] = (data, time.time())
 
 
 @asynccontextmanager
@@ -105,6 +124,9 @@ async def add_fund(req: AddFundRequest):
             )
         await db.commit()
 
+        _cache.pop("funds_list", None)  # 清除缓存
+        _cache.pop("estimate_all", None)
+
         return {
             "success": True,
             "fund": {
@@ -123,11 +145,15 @@ async def add_fund(req: AddFundRequest):
 @app.get("/api/funds")
 async def list_funds():
     """获取所有已添加的基金"""
+    cached = _get_cache("funds_list", FUNDS_TTL)
+    if cached is not None:
+        return cached
+
     db = await get_db()
     try:
         cursor = await db.execute("SELECT * FROM funds ORDER BY asset_value DESC")
         rows = await cursor.fetchall()
-        return [
+        result = [
             {
                 "id": row["id"],
                 "code": row["code"],
@@ -150,6 +176,9 @@ async def list_funds():
     finally:
         await db.close()
 
+    _set_cache("funds_list", result)
+    return result
+
 
 @app.delete("/api/funds/{code}")
 async def remove_fund(code: str):
@@ -157,6 +186,7 @@ async def remove_fund(code: str):
     try:
         await db.execute("DELETE FROM funds WHERE code = ?", (code,))
         await db.commit()
+        _cache.pop("funds_list", None)  # 清除缓存
         return {"success": True}
     finally:
         await db.close()
@@ -171,6 +201,7 @@ async def update_fund_threshold(code: str, threshold: float = Query(1.5)):
             (threshold, code),
         )
         await db.commit()
+        _cache.pop("funds_list", None)  # 清除缓存
         return {"success": True, "code": code, "threshold": threshold}
     finally:
         await db.close()
@@ -196,6 +227,10 @@ def _model_row_to_dict(row) -> dict:
 @app.get("/api/estimate/all")
 async def get_all_estimates():
     """获取所有基金的实时估值（并发）"""
+    cached = _get_cache("estimate_all", ESTIMATE_TTL)
+    if cached is not None:
+        return cached
+
     import asyncio as _asyncio
 
     db = await get_db()
@@ -256,16 +291,23 @@ async def get_all_estimates():
 
     results = await _asyncio.gather(*[_estimate_with_limit(d) for d in rows_dict])
 
-    return {
+    result = {
         "funds": results,
         "count": len(results),
         "timestamp": datetime.now().isoformat(),
     }
+    _set_cache("estimate_all", result)
+    return result
 
 
 @app.get("/api/estimate/{code}")
 async def get_estimate(code: str):
     """获取单只基金的实时估值"""
+    cache_key = f"estimate_{code}"
+    cached = _get_cache(cache_key, ESTIMATE_TTL)
+    if cached is not None:
+        return cached
+
     db = await get_db()
     try:
         cursor = await db.execute("SELECT * FROM funds WHERE code = ?", (code,))
@@ -285,7 +327,7 @@ async def get_estimate(code: str):
             daily_profit=d["daily_profit"],
         )
 
-        return {
+        resp = {
             "code": result.fund_code,
             "name": result.fund_name,
             "nav": result.nav,
@@ -313,6 +355,8 @@ async def get_estimate(code: str):
             "details": result.details,
             "timestamp": datetime.now().isoformat(),
         }
+        _set_cache(cache_key, resp)
+        return resp
     finally:
         await db.close()
 

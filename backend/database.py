@@ -28,8 +28,13 @@ async def init_db():
                 nav_date TEXT DEFAULT '',            -- 净值日期
                 acc_nav REAL DEFAULT 0,              -- 累计净值
                 sector TEXT DEFAULT '',              -- 实际板块（根据持仓判断）
+                theme_name TEXT DEFAULT '',          -- 主题名称
                 holdings_json TEXT DEFAULT '[]',     -- 持仓JSON
                 holdings_date TEXT DEFAULT '',       -- 持仓报告日期
+                asset_value REAL DEFAULT 0,          -- 持有金额
+                hold_profit REAL DEFAULT 0,          -- 持仓收益
+                hold_profit_rate TEXT DEFAULT '',    -- 持仓收益率
+                daily_profit REAL DEFAULT 0,         -- 昨日收益
                 alert_threshold REAL DEFAULT 1.5,    -- 加仓提醒阈值（跌幅%）
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

@@ -9,6 +9,29 @@ from datetime import datetime
 from collections import Counter
 
 
+import time as _time
+
+# ── 共享连接池 ──
+_shared_session = None
+
+async def _get_session():
+    global _shared_session
+    if _shared_session is None or _shared_session.closed:
+        import aiohttp
+        _shared_session = aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(limit=20, force_close=False),
+            timeout=aiohttp.ClientTimeout(total=10),
+        )
+    return _shared_session
+
+# ── 指数行情缓存 ──
+_idx_cache = None
+_IDX_CACHE_TTL = 30
+
+# ── 股票行情缓存（去重，多基金共享）──
+_stock_cache: dict[str, tuple[float, dict]] = {}
+_STOCK_CACHE_TTL = 30
+
 # ============================================================
 # 天天基金实时估值（主估值源）
 # ============================================================
@@ -23,38 +46,38 @@ async def fetch_fund_estimate(code: str) -> dict | None:
     url = f"http://fundgz.1234567.com.cn/js/{code}.js?rt={datetime.now().timestamp()}"
     headers = {"User-Agent": "Mozilla/5.0", "Referer": "http://fund.eastmoney.com/"}
 
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(url, headers=headers, timeout=10) as resp:
-                if resp.status != 200:
-                    return None
-                data = await resp.text()
+    session = await _get_session()
+    try:
+        async with session.get(url, headers=headers, timeout=10) as resp:
+            if resp.status != 200:
+                return None
+            data = await resp.text()
 
-            m = re.search(r"jsonpgz\((.*)\)", data)
-            if not m:
-                # fundgz 不支持（如期货型基金）→ 降级到 lsjz
-                return await _fetch_fund_estimate_lsjz(code)
-
-            gz = json.loads(m.group(1))
-            nav = float(gz.get("dwjz", 0))
-            # 如果 nav 为 0，也降级
-            if nav == 0:
-                fallback = await _fetch_fund_estimate_lsjz(code)
-                if fallback:
-                    return fallback
-
-            return {
-                "code": gz.get("fundcode", code),
-                "name": gz.get("name", ""),
-                "nav_date": gz.get("jzrq", ""),  # 净值日期
-                "nav": nav,  # 昨日净值
-                "estimated_nav": float(gz.get("gsz", 0)),  # 估算净值
-                "change_pct": float(gz.get("gszzl", 0)),  # 估算涨跌幅 %
-                "estimate_time": gz.get("gztime", ""),  # 估值时间
-            }
-        except Exception as e:
-            print(f"[fetcher] 天天基金估值失败 {code}: {e}")
+        m = re.search(r"jsonpgz\((.*)\)", data)
+        if not m:
+            # fundgz 不支持（如期货型基金）→ 降级到 lsjz
             return await _fetch_fund_estimate_lsjz(code)
+
+        gz = json.loads(m.group(1))
+        nav = float(gz.get("dwjz", 0))
+        # 如果 nav 为 0，也降级
+        if nav == 0:
+            fallback = await _fetch_fund_estimate_lsjz(code)
+            if fallback:
+                return fallback
+
+        return {
+            "code": gz.get("fundcode", code),
+            "name": gz.get("name", ""),
+            "nav_date": gz.get("jzrq", ""),  # 净值日期
+            "nav": nav,  # 昨日净值
+            "estimated_nav": float(gz.get("gsz", 0)),  # 估算净值
+            "change_pct": float(gz.get("gszzl", 0)),  # 估算涨跌幅 %
+            "estimate_time": gz.get("gztime", ""),  # 估值时间
+        }
+    except Exception as e:
+        print(f"[fetcher] 天天基金估值失败 {code}: {e}")
+        return await _fetch_fund_estimate_lsjz(code)
 
 
 async def _fetch_fund_estimate_lsjz(code: str) -> dict | None:
@@ -64,31 +87,31 @@ async def _fetch_fund_estimate_lsjz(code: str) -> dict | None:
         "User-Agent": "Mozilla/5.0",
         "Referer": "https://fund.eastmoney.com/",
     }
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(url, headers=headers, timeout=10) as resp:
-                if resp.status != 200:
-                    return None
-                data = await resp.json()
-
-            items = data.get("Data", {}).get("LSJZList", [])
-            if not items:
+    session = await _get_session()
+    try:
+        async with session.get(url, headers=headers, timeout=10) as resp:
+            if resp.status != 200:
                 return None
+            data = await resp.json()
 
-            item = items[0]
-            nav = float(item.get("DWJZ", 0))
-            return {
-                "code": code,
-                "name": "",
-                "nav_date": item.get("FSRQ", ""),
-                "nav": nav,
-                "estimated_nav": nav,  # 无实时估值，用最新净值代替
-                "change_pct": float(item.get("JZZZL", 0)),
-                "estimate_time": item.get("FSRQ", ""),
-            }
-        except Exception as e:
-            print(f"[fetcher] lsjz 降级失败 {code}: {e}")
+        items = data.get("Data", {}).get("LSJZList", [])
+        if not items:
             return None
+
+        item = items[0]
+        nav = float(item.get("DWJZ", 0))
+        return {
+            "code": code,
+            "name": "",
+            "nav_date": item.get("FSRQ", ""),
+            "nav": nav,
+            "estimated_nav": nav,  # 无实时估值，用最新净值代替
+            "change_pct": float(item.get("JZZZL", 0)),
+            "estimate_time": item.get("FSRQ", ""),
+        }
+    except Exception as e:
+        print(f"[fetcher] lsjz 降级失败 {code}: {e}")
+        return None
 
 
 # ============================================================
@@ -101,44 +124,44 @@ async def fetch_fund_info(code: str) -> dict | None:
     url = f"http://fund.eastmoney.com/pingzhongdata/{code}.js"
     headers = {"User-Agent": "Mozilla/5.0", "Referer": "http://fund.eastmoney.com/"}
 
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(url, headers=headers, timeout=10) as resp:
-                if resp.status != 200:
-                    return None
-                data = await resp.text()
+    session = await _get_session()
+    try:
+        async with session.get(url, headers=headers, timeout=10) as resp:
+            if resp.status != 200:
+                return None
+            data = await resp.text()
 
-            name_match = re.search(r'fS_name\s*=\s*"(.+?)"', data)
-            name = name_match.group(1) if name_match else ""
+        name_match = re.search(r'fS_name\s*=\s*"(.+?)"', data)
+        name = name_match.group(1) if name_match else ""
 
-            type_match = re.search(r'fS_typename\s*=\s*"(.+?)"', data)
-            fund_type = type_match.group(1) if type_match else ""
+        type_match = re.search(r'fS_typename\s*=\s*"(.+?)"', data)
+        fund_type = type_match.group(1) if type_match else ""
 
-            net_match = re.search(r"Data_netWorthTrend\s*=\s*(\[.+?\])", data)
-            latest_nav = 0.0
-            nav_date = ""
-            if net_match:
-                try:
-                    net_data = json.loads(net_match.group(1))
-                    if net_data:
-                        latest = net_data[-1]
-                        latest_nav = float(latest.get("y", 0))
-                        ts = latest.get("x", 0)
-                        if ts:
-                            nav_date = datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d")
-                except json.JSONDecodeError:
-                    pass
+        net_match = re.search(r"Data_netWorthTrend\s*=\s*(\[.+?\])", data)
+        latest_nav = 0.0
+        nav_date = ""
+        if net_match:
+            try:
+                net_data = json.loads(net_match.group(1))
+                if net_data:
+                    latest = net_data[-1]
+                    latest_nav = float(latest.get("y", 0))
+                    ts = latest.get("x", 0)
+                    if ts:
+                        nav_date = datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d")
+            except json.JSONDecodeError:
+                pass
 
-            return {
-                "code": code,
-                "name": name,
-                "fund_type": fund_type,
-                "nav": latest_nav,
-                "nav_date": nav_date,
-            }
-        except Exception as e:
-            print(f"[fetcher] 获取基金信息失败 {code}: {e}")
-            return None
+        return {
+            "code": code,
+            "name": name,
+            "fund_type": fund_type,
+            "nav": latest_nav,
+            "nav_date": nav_date,
+        }
+    except Exception as e:
+        print(f"[fetcher] 获取基金信息失败 {code}: {e}")
+        return None
 
 
 # ============================================================
@@ -157,60 +180,60 @@ async def fetch_fund_holdings(code: str) -> list[dict] | None:
         "Referer": "http://fundf10.eastmoney.com/",
     }
 
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(url, headers=headers, timeout=10) as resp:
-                if resp.status != 200:
-                    return None
-                data = await resp.text()
-
-            content_match = re.search(r'var apidata=\{ content:"(.+?)",arryear:', data)
-            if not content_match:
-                print(f"[fetcher] 未找到持仓数据 content: {code}")
+    session = await _get_session()
+    try:
+        async with session.get(url, headers=headers, timeout=10) as resp:
+            if resp.status != 200:
                 return None
+            data = await resp.text()
 
-            html = content_match.group(1)
-            html = html.replace('\\"', '"').replace("\\n", "\n").replace("\\t", " ")
-
-            date_match = re.search(r"截止至：.*?(\d{4}-\d{2}-\d{2})", html)
-            report_date = date_match.group(1) if date_match else ""
-
-            # 解析表格 — 每行 9 个 td：序号|代码|名称|最新价|涨跌幅|相关资讯|占净值比|持股数|持仓市值
-            tbody_match = re.search(r"<tbody>(.+?)</tbody>", html, re.DOTALL)
-            if not tbody_match:
-                print(f"[fetcher] 未找到 tbody: {code}")
-                return None
-
-            tr_rows = re.findall(r"<tr>(.+?)</tr>", tbody_match.group(1), re.DOTALL)
-            holdings = []
-            for tr in tr_rows:
-                tds = re.findall(r"<td[^>]*>(.*?)</td>", tr, re.DOTALL)
-                if len(tds) < 7:
-                    continue
-                stock_code = re.sub(r"<[^>]+>", "", tds[1]).strip()
-                stock_name = re.sub(r"<[^>]+>", "", tds[2]).strip()
-                pct_str = re.sub(r"<[^>]+>", "", tds[6]).strip()
-
-                try:
-                    weight = float(pct_str.replace("%", ""))
-                except ValueError:
-                    continue
-
-                holdings.append({
-                    "stock_code": stock_code,
-                    "stock_name": stock_name,
-                    "weight": weight,
-                    "weight_str": pct_str,
-                })
-
-            if holdings:
-                print(f"[fetcher] 解析到 {len(holdings)} 只持仓 (code={code}, date={report_date})")
-
-            return holdings if holdings else None
-
-        except Exception as e:
-            print(f"[fetcher] 获取持仓失败 {code}: {e}")
+        content_match = re.search(r'var apidata=\{ content:"(.+?)",arryear:', data)
+        if not content_match:
+            print(f"[fetcher] 未找到持仓数据 content: {code}")
             return None
+
+        html = content_match.group(1)
+        html = html.replace('\\"', '"').replace("\\n", "\n").replace("\\t", " ")
+
+        date_match = re.search(r"截止至：.*?(\d{4}-\d{2}-\d{2})", html)
+        report_date = date_match.group(1) if date_match else ""
+
+        # 解析表格 — 每行 9 个 td：序号|代码|名称|最新价|涨跌幅|相关资讯|占净值比|持股数|持仓市值
+        tbody_match = re.search(r"<tbody>(.+?)</tbody>", html, re.DOTALL)
+        if not tbody_match:
+            print(f"[fetcher] 未找到 tbody: {code}")
+            return None
+
+        tr_rows = re.findall(r"<tr>(.+?)</tr>", tbody_match.group(1), re.DOTALL)
+        holdings = []
+        for tr in tr_rows:
+            tds = re.findall(r"<td[^>]*>(.*?)</td>", tr, re.DOTALL)
+            if len(tds) < 7:
+                continue
+            stock_code = re.sub(r"<[^>]+>", "", tds[1]).strip()
+            stock_name = re.sub(r"<[^>]+>", "", tds[2]).strip()
+            pct_str = re.sub(r"<[^>]+>", "", tds[6]).strip()
+
+            try:
+                weight = float(pct_str.replace("%", ""))
+            except ValueError:
+                continue
+
+            holdings.append({
+                "stock_code": stock_code,
+                "stock_name": stock_name,
+                "weight": weight,
+                "weight_str": pct_str,
+            })
+
+        if holdings:
+            print(f"[fetcher] 解析到 {len(holdings)} 只持仓 (code={code}, date={report_date})")
+
+        return holdings if holdings else None
+
+    except Exception as e:
+        print(f"[fetcher] 获取持仓失败 {code}: {e}")
+        return None
 
 
 # ============================================================
@@ -228,10 +251,21 @@ async def fetch_stock_quotes_with_industry(stock_codes: list[str]) -> dict[str, 
     if not stock_codes:
         return {}
 
+    # 先查缓存
+    now = _time.time()
+    cached_results: dict[str, dict] = {}
+    uncached_codes: list[str] = []
+    for code in stock_codes:
+        entry = _stock_cache.get(code)
+        if entry and (now - entry[0] < _STOCK_CACHE_TTL):
+            cached_results[code] = entry[1]
+        else:
+            uncached_codes.append(code)
+
     # 构造腾讯 qt 代码：sz + 代码 或 sh + 代码
     qt_codes = []
     code_map: dict[str, str] = {}  # qt_code -> raw_code
-    for code in stock_codes:
+    for code in uncached_codes:
         if code.startswith("6"):
             qt = f"sh{code}"
         elif code.startswith(("0", "3")):
@@ -288,6 +322,10 @@ async def fetch_stock_quotes_with_industry(stock_codes: list[str]) -> dict[str, 
                         }
                 except (ValueError, IndexError):
                     continue
+    # 写入缓存 + 合并已缓存结果
+    for code, data in result.items():
+        _stock_cache[code] = (now, data)
+    result.update(cached_results)
     return result
 
 
@@ -341,38 +379,38 @@ async def _scrape_fund_theme_from_page(fund_code: str) -> str:
     url = f"https://fund.eastmoney.com/{fund_code}.html"
     headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://fund.eastmoney.com/"}
 
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(url, headers=headers, timeout=10) as resp:
-                if resp.status != 200:
-                    return ""
-                html = await resp.text()
+    session = await _get_session()
+    try:
+        async with session.get(url, headers=headers, timeout=10) as resp:
+            if resp.status != 200:
+                return ""
+            html = await resp.text()
 
-            # 按区块分割，逐个查找包含「相关主题基金」（非「热门」）的区块
-            sections = html.split('<div class="fund_item relatedThemeFund">')
-            for section in sections[1:]:
-                # 取到该区块结束（下一个 fund_item 或同公司旗下基金）
-                end_marker = section.find('同公司旗下基金')
-                if end_marker < 0:
-                    end_marker = section.find('<!-- 相关主题基金 end -->')
-                if end_marker < 0:
-                    end_marker = len(section) // 2  # 安全截断
-                chunk = section[:end_marker]
+        # 按区块分割，逐个查找包含「相关主题基金」（非「热门」）的区块
+        sections = html.split('<div class="fund_item relatedThemeFund">')
+        for section in sections[1:]:
+            # 取到该区块结束（下一个 fund_item 或同公司旗下基金）
+            end_marker = section.find('同公司旗下基金')
+            if end_marker < 0:
+                end_marker = section.find('<!-- 相关主题基金 end -->')
+            if end_marker < 0:
+                end_marker = len(section) // 2  # 安全截断
+            chunk = section[:end_marker]
                 
-                # 必须包含「相关主题基金」且不包含「热门主题基金」
-                if '相关主题基金' not in chunk:
-                    continue
-                if '热门主题基金' in chunk[:500]:  # 开头就是热门则跳过
-                    continue
+            # 必须包含「相关主题基金」且不包含「热门主题基金」
+            if '相关主题基金' not in chunk:
+                continue
+            if '热门主题基金' in chunk[:500]:  # 开头就是热门则跳过
+                continue
                 
-                # 提取: <li class="tabBtn titleItemActive" data-id=BK000645><span>锂矿</span></li>
-                match = re.search(r'titleItemActive[^>]*data-id=BK\d+[^>]*><span>([^<]+)</span>', chunk)
-                if match:
-                    theme = match.group(1)
-                    print(f"[fetcher] 网页抓取主题 {fund_code}: {theme}")
-                    return theme
-        except Exception as e:
-            print(f"[fetcher] 网页抓取失败 {fund_code}: {e}")
+            # 提取: <li class="tabBtn titleItemActive" data-id=BK000645><span>锂矿</span></li>
+            match = re.search(r'titleItemActive[^>]*data-id=BK\d+[^>]*><span>([^<]+)</span>', chunk)
+            if match:
+                theme = match.group(1)
+                print(f"[fetcher] 网页抓取主题 {fund_code}: {theme}")
+                return theme
+    except Exception as e:
+        print(f"[fetcher] 网页抓取失败 {fund_code}: {e}")
     return ""
 
 
@@ -382,37 +420,37 @@ async def _call_theme_api(keywords: list[str]) -> str:
         "X-API-Key": TTFUND_API_KEY,
         "Content-Type": "application/json",
     }
-    async with aiohttp.ClientSession() as session:
-        for kw in keywords[:2]:
-            try:
-                body = {
-                    "skill_id": "FUND_THEME_INFO",
-                    "_skill_version": "1.0.0",
-                    "query": kw,
-                }
-                async with session.post(
-                    TTFUND_GATEWAY, json=body, headers=headers, timeout=10
-                ) as resp:
-                    if resp.status != 200:
-                        continue
-                    data = await resp.json()
-
-                if data.get("code") != 0:
+    session = await _get_session()
+    for kw in keywords[:2]:
+        try:
+            body = {
+                "skill_id": "FUND_THEME_INFO",
+                "_skill_version": "1.0.0",
+                "query": kw,
+            }
+            async with session.post(
+                TTFUND_GATEWAY, json=body, headers=headers, timeout=10
+            ) as resp:
+                if resp.status != 200:
                     continue
+                data = await resp.json()
 
-                raw = data["data"]["raw_result"]["body"]
-                if not raw.get("success"):
-                    continue
-
-                theme_data = raw.get("data")
-                if isinstance(theme_data, dict) and theme_data.get("theme_name"):
-                    return theme_data["theme_name"]
-                if isinstance(theme_data, list) and theme_data:
-                    return theme_data[0].get("theme_name", "")
-
-            except Exception as e:
-                print(f"[fetcher] 主题API调用失败 {kw}: {e}")
+            if data.get("code") != 0:
                 continue
+
+            raw = data["data"]["raw_result"]["body"]
+            if not raw.get("success"):
+                continue
+
+            theme_data = raw.get("data")
+            if isinstance(theme_data, dict) and theme_data.get("theme_name"):
+                return theme_data["theme_name"]
+            if isinstance(theme_data, list) and theme_data:
+                return theme_data[0].get("theme_name", "")
+
+        except Exception as e:
+            print(f"[fetcher] 主题API调用失败 {kw}: {e}")
+            continue
     return ""
 
 
@@ -491,26 +529,26 @@ async def fetch_fund_nav_history(fund_code: str, days: int = 5) -> list[dict]:
         "User-Agent": "Mozilla/5.0",
         "Referer": "https://fund.eastmoney.com/",
     }
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(url, headers=headers, timeout=10) as resp:
-                if resp.status != 200:
-                    return []
-                data = await resp.json()
+    session = await _get_session()
+    try:
+        async with session.get(url, headers=headers, timeout=10) as resp:
+            if resp.status != 200:
+                return []
+            data = await resp.json()
 
-            items = data.get("Data", {}).get("LSJZList", [])
-            result = []
-            for item in items:
-                result.append({
-                    "nav": float(item.get("DWJZ", 0)),
-                    "date": item.get("FSRQ", ""),
-                    "nav_date": item.get("FSRQ", ""),
-                    "change_pct": float(item.get("JZZZL", 0)),
-                })
-            return result
-        except Exception as e:
-            print(f"[fetcher] NAV历史获取失败 {fund_code}: {e}")
-            return []
+        items = data.get("Data", {}).get("LSJZList", [])
+        result = []
+        for item in items:
+            result.append({
+                "nav": float(item.get("DWJZ", 0)),
+                "date": item.get("FSRQ", ""),
+                "nav_date": item.get("FSRQ", ""),
+                "change_pct": float(item.get("JZZZL", 0)),
+            })
+        return result
+    except Exception as e:
+        print(f"[fetcher] NAV历史获取失败 {fund_code}: {e}")
+        return []
 
 
 # ============================================================
@@ -556,7 +594,12 @@ def identify_sector_from_industries(holdings: list[dict]) -> str:
 # ============================================================
 
 async def fetch_index_quotes() -> dict[str, dict]:
-    """获取四大指数实时行情（腾讯 qt.gtimg.cn）"""
+    """获取四大指数实时行情（腾讯 qt.gtimg.cn）—— 带缓存，所有基金共享"""
+    global _idx_cache
+    now = _time.time()
+    if _idx_cache and (now - _idx_cache[0] < _IDX_CACHE_TTL):
+        return _idx_cache[1]
+
     idx_codes = {
         "sh000300": "沪深300",
         "sh000905": "中证500",
@@ -598,4 +641,5 @@ async def fetch_index_quotes() -> dict[str, dict]:
             }
         except (ValueError, IndexError):
             continue
+    _idx_cache = (_time.time(), result)
     return result

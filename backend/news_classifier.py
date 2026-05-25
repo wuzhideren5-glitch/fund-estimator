@@ -21,8 +21,8 @@ from tushare_client import get_pro
 # DeepSeek API（从项目 .env 读取）
 _ENV_PATH = os.path.join(os.path.dirname(__file__), '.env')
 if not os.path.exists(_ENV_PATH):
-    # 回退：从求职AI项目读取
-    _ENV_PATH = '/Users/penghui/Documents/求职AI系统开发/backend/.env'
+    # 回退：从求职AI项目读取（Linux 服务器路径）
+    _ENV_PATH = '/home/ubuntu/sfi/backend/.env'
 
 DEEPSEEK_API_KEY = ""
 DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"

@@ -728,7 +728,8 @@ async function toggleDetail(code) {
       }
 
       if (grid) {
-        grid.innerHTML = `
+        const hasHoldings = data.details && data.details.length > 0;
+        grid.innerHTML = hasHoldings ? `
           <div style="grid-column:1/-1;display:flex;gap:16px;font-size:13px;margin-bottom:8px;padding:8px 12px;background:#fff;border-radius:4px;border:1px solid var(--border);">
             <div>🧩 前十大: <b style="color:${disc>=0?'var(--positive)':'var(--negative)'}">${discSign}${disc.toFixed(2)}%</b></div>
             <div>🔮 风格补全: <b style="color:${undisc>=0?'var(--positive)':'var(--negative)'}">${undiscSign}${undisc.toFixed(2)}%</b></div>
@@ -748,7 +749,10 @@ async function toggleDetail(code) {
               ${d.industry ? `<span style="margin-left:6px;font-size:10px;color:var(--text-secondary);background:var(--primary-light);padding:1px 5px;border-radius:3px;">${escHtml(d.industry)}</span>` : ''}
             </span>
           </div>
-          `).join('')}`;
+          `).join('')}` : `
+          <div style="grid-column:1/-1;text-align:center;padding:24px 12px;color:var(--text-secondary);font-size:13px;">
+            📭 该基金可能为 ETF 联接 / FOF 型，不直接持有股票，暂无持仓明细
+          </div>`;
       }
     } catch (e) {
       if (grid) grid.innerHTML = `<span style="color:var(--negative)">加载失败: ${e.message}</span>`;
