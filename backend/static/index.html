@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>基金实时估值看板</title>
+<style>
+  :root {
+    --primary: #1B5099;
+    --primary-light: #E8F0FA;
+    --text: #44546A;
+    --text-secondary: #6B7A8E;
+    --positive: #C00000;
+    --negative: #00B050;
+    --bg: #FAFBFC;
+    --card-bg: #FFFFFF;
+    --border: #E2E6EA;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06);
+    --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--primary);
+  }
+  .header-status {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .header-status .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--positive);
+    margin-right: 4px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Main */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  /* Add Fund Bar */
+  .add-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: center;
+  }
+  .add-bar input {
+    flex: 1;
+    max-width: 200px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .add-bar input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-light);
+  }
+  .add-bar .threshold-input {
+    max-width: 80px;
+  }
+  .add-bar label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-outline {
+    background: #fff;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+  }
+  .btn-outline:hover { background: var(--primary-light); }
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .btn-danger {
+    background: none;
+    color: var(--negative);
+    border: 1px solid var(--negative);
+  }
+  .btn-danger:hover { background: #FFF0F0; }
+
+  /* Status messages */
+  .status-msg {
+    font-size: 13px;
+    margin-left: 8px;
+    opacity: 0;
+    transition: opacity .3s;
+  }
+  .status-msg.show { opacity: 1; }
+  .status-msg.success { color: var(--positive); }
+  .status-msg.error { color: var(--negative); }
+
+  /* Fund Table */
+  .fund-table-wrap {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .fund-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .fund-table thead th {
+    background: var(--primary);
+    color: #fff;
+    font-weight: 500;
+    font-size: 13px;
+    padding: 12px 16px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .fund-table tbody td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .fund-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .fund-table tbody tr:hover {
+    background: #F7F9FB;
+  }
+  .fund-table tbody tr.alert-row {
+    background: #FFF5F5;
+  }
+  .fund-table tbody tr.alert-row:hover {
+    background: #FFEBEB;
+  }
+
+  /* Fund name cell */
+  .fund-name {
+    font-weight: 500;
+    color: var(--text);
+  }
+  .fund-code {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+  .fund-sector {
+    display: inline-block;
+    font-size: 11px;
+    background: var(--primary-light);
+    color: var(--primary);
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-top: 4px;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .fund-sector:hover {
+    background: #D0E0F8;
+  }
+
+  /* Theme news panel */
+  .theme-news-panel {
+    display: none;
+    padding: 12px 16px;
+    background: #F0F4F8;
+    border-left: 3px solid var(--primary);
+    border-radius: 0 6px 6px 0;
+    margin: 8px 0;
+  }
+  .theme-news-panel.open { display: block; }
+  .theme-news-header {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .theme-news-refresh {
+    font-size: 12px;
+    color: var(--primary);
+    cursor: pointer;
+    border: 1px solid var(--primary);
+    border-radius: 4px;
+    padding: 2px 8px;
+    background: #fff;
+    transition: all .2s;
+  }
+  .theme-news-refresh:hover { background: var(--primary-light); }
+  .theme-news-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .theme-news-item {
+    padding: 6px 0;
+    border-bottom: 1px solid #E2E6EA;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .theme-news-item:last-child { border-bottom: none; }
+  .theme-news-item a {
+    color: var(--text);
+    text-decoration: none;
+  }
+  .theme-news-item a:hover { color: var(--primary); }
+  .theme-news-time {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-right: 8px;
+  }
+  .theme-news-loading {
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+
+  /* NAV cell */
+  .nav-value {
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+  .nav-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+
+  /* Change cell */
+  .change-positive { color: var(--positive); font-weight: 600; }
+  .change-negative { color: var(--negative); font-weight: 600; }
+  .change-zero { color: var(--text-secondary); }
+
+  /* Alert badge */
+  .alert-badge {
+    display: inline-block;
+    font-size: 12px;
+    background: #FFF0F0;
+    color: var(--negative);
+    border: 1px solid #FFD0D0;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 500;
+  }
+
+  /* Coverage bar */
+  .coverage-bar {
+    height: 4px;
+    background: #E8ECF0;
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+    width: 60px;
+  }
+  .coverage-bar-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 2px;
+    transition: width .3s;
+  }
+
+  /* Holdings detail (expandable) */
+  .expand-btn {
+    cursor: pointer;
+    color: var(--primary);
+    font-size: 12px;
+    user-select: none;
+  }
+  .holdings-detail {
+    display: none;
+    padding: 16px;
+    background: #F7F9FB;
+    border-top: 1px solid var(--border);
+  }
+  .holdings-detail.open {
+    display: block;
+  }
+  .holdings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+    font-size: 13px;
+  }
+  .holding-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: #fff;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .holding-item .stock-name {
+    font-weight: 500;
+  }
+  .holding-item .stock-weight {
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+  }
+  .empty-state .empty-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.4;
+  }
+  .empty-state p {
+    margin-bottom: 4px;
+  }
+
+  /* Loading spinner */
+  .loading {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  .spinner {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .container { padding: 12px; }
+    .add-bar { flex-wrap: wrap; }
+    .add-bar input { max-width: 100%; }
+    .fund-table thead th,
+    .fund-table tbody td { padding: 10px 8px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📊 基金实时估值看板</h1>
+  <div class="header-status">
+    <span class="dot"></span>实时监控中 · <span id="update-time">--</span>
+  </div>
+</div>
+
+<div class="container">
+  <!-- 添加基金栏 -->
+  <div class="add-bar">
+    <input type="text" id="fund-code-input" placeholder="输入基金代码，如 110011" maxlength="6">
+    <label>加仓阈值</label>
+    <input type="number" id="threshold-input" class="threshold-input" value="1.5" step="0.1" min="0.1" max="10">
+    <label>%</label>
+    <button class="btn btn-primary" id="add-btn" onclick="addFund()">➕ 添加基金</button>
+    <span class="status-msg" id="status-msg"></span>
+  </div>
+
+  <!-- 操作栏 -->
+  <div class="add-bar" style="margin-bottom: 12px;">
+    <button class="btn btn-outline btn-sm" onclick="refreshAll()">🔄 刷新估值</button>
+    <button class="btn btn-outline btn-sm" onclick="refreshAINews()" id="ai-news-btn" style="margin-left:8px;">🤖 刷新AI新闻</button>
+    <span style="font-size:12px;color:var(--text-secondary);margin-left:8px;">
+      自动刷新间隔：<select id="auto-refresh" onchange="setAutoRefresh()" style="padding:4px;border:1px solid var(--border);border-radius:4px;font-size:12px;">
+        <option value="0">关闭</option>
+        <option value="10">10秒</option>
+        <option value="30" selected>30秒</option>
+        <option value="60">60秒</option>
+      </select>
+    </span>
+  </div>
+
+  <!-- 基金列表 -->
+  <div class="fund-table-wrap">
+    <table class="fund-table" id="fund-table">
+      <thead>
+        <tr>
+          <th>基金名称 / 主题</th>
+          <th>持有金额</th>
+          <th>持仓收益</th>
+          <th>前日净值</th>
+          <th>昨估净值</th>
+          <th>估算涨跌</th>
+          <th>真实涨跌</th>
+          <th>加仓提醒</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="fund-tbody">
+      </tbody>
+    </table>
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">📭</div>
+      <p>还没有添加基金</p>
+      <p style="font-size:12px;">在上方输入基金代码开始监控</p>
+    </div>
+    <div class="loading" id="loading" style="display:none;">
+      <span class="spinner"></span>加载中...
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+let refreshTimer = null;
+
+// ========== 添加基金 ==========
+async function addFund() {
+  const input = document.getElementById('fund-code-input');
+  const thresholdInput = document.getElementById('threshold-input');
+  const code = input.value.trim();
+  const threshold = parseFloat(thresholdInput.value) || 1.5;
+
+  if (!code || code.length < 5) {
+    showStatus('请输入正确的基金代码', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('add-btn');
+  btn.disabled = true;
+  btn.textContent = '添加中...';
+  clearStatus();
+
+  try {
+    const resp = await fetch(`${API}/funds`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, alert_threshold: threshold })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || '添加失败');
+
+    showStatus(`✓ 已添加 ${data.fund.name}`, 'success');
+    input.value = '';
+    await loadFunds();
+    await refreshAll();
+  } catch (e) {
+    showStatus(`✗ ${e.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '➕ 添加基金';
+  }
+}
+
+// ========== 加载基金列表 ==========
+async function loadFunds() {
+  try {
+    const resp = await fetch(`${API}/funds`);
+    const funds = await resp.json();
+
+    const tbody = document.getElementById('fund-tbody');
+    const empty = document.getElementById('empty-state');
+
+    if (funds.length === 0) {
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    // 保留现有行的基金代码，只新增/删除
+    const existingCodes = new Set();
+    tbody.querySelectorAll('tr.fund-row').forEach(tr => {
+      existingCodes.add(tr.dataset.code);
+    });
+    const newCodes = new Set(funds.map(f => f.code));
+
+    // 移除已删除的基金行
+    tbody.querySelectorAll('tr.fund-row').forEach(tr => {
+      if (!newCodes.has(tr.dataset.code)) {
+        // 同时移除关联的详情行
+        const detailRow = tr.nextElementSibling;
+        if (detailRow && detailRow.classList.contains('detail-row')) {
+          detailRow.remove();
+        }
+        tr.remove();
+      }
+    });
+
+    // 新增基金行
+    for (const fund of funds) {
+      if (!existingCodes.has(fund.code)) {
+        addFundRow(fund);
+      }
+    }
+  } catch (e) {
+    console.error('加载基金列表失败:', e);
+  }
+}
+
+function addFundRow(fund) {
+  const tbody = document.getElementById('fund-tbody');
+  const row = document.createElement('tr');
+  row.className = 'fund-row';
+  row.dataset.code = fund.code;
+  const av = fund.asset_value || 0;
+  const avStr = av >= 10000 ? (av/10000).toFixed(2)+'万' : av.toFixed(0);
+  const hpr = fund.hold_profit_rate || '';
+  row.innerHTML = `
+    <td>
+      <div class="fund-name">${escHtml(fund.name)}</div>
+      <div class="fund-code">${fund.code}</div>
+      <span class="fund-sector" data-theme="${escHtml(fund.sector || fund.theme_name || '')}" data-code="${fund.code}">${escHtml(fund.sector || fund.theme_name || '识别中...')}</span>
+    </td>
+    <td>
+      <div class="nav-value">${avStr}</div>
+    </td>
+    <td>
+      <div class="nav-value" style="color:${(fund.hold_profit||0)>=0?'var(--positive)':'var(--negative)'}">${hpr}</div>
+    </td>
+    <td>
+      <div class="nav-value" id="prev-nav-${fund.code}">${(fund.nav||0).toFixed(4)}</div>
+      <div class="nav-label" id="nav-date-${fund.code}">${fund.nav_date||'--'}</div>
+    </td>
+    <td>
+      <div class="nav-value" id="est-nav-${fund.code}">--</div>
+    </td>
+    <td id="change-cell-${fund.code}">--</td>
+    <td id="real-change-cell-${fund.code}">--</td>
+    <td id="alert-cell-${fund.code}">--</td>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-outline btn-sm expand-btn" onclick="toggleDetail('${fund.code}')" id="expand-btn-${fund.code}">
+        📋 持仓
+      </button>
+      <button class="btn btn-danger btn-sm" onclick="removeFund('${fund.code}')" style="margin-left:4px;">
+        ✕
+      </button>
+    </td>
+  `;
+  tbody.appendChild(row);
+
+  const detailRow = document.createElement('tr');
+  detailRow.className = 'detail-row';
+  detailRow.dataset.code = fund.code;
+  detailRow.innerHTML = `
+    <td colspan="9" style="padding:0;">
+      <div class="holdings-detail" id="detail-${fund.code}">
+        <div class="holdings-grid" id="holdings-grid-${fund.code}">
+          <span style="color:var(--text-secondary)">加载中...</span>
+        </div>
+      </div>
+      <div class="theme-news-panel" id="news-${fund.code}">
+        <div class="theme-news-header" id="news-header-${fund.code}"></div>
+        <ul class="theme-news-list" id="news-list-${fund.code}"></ul>
+      </div>
+    </td>
+  `;
+  tbody.appendChild(detailRow);
+}
+
+// ========== 刷新估值 ==========
+async function refreshAll() {
+  const loading = document.getElementById('loading');
+  loading.style.display = 'block';
+
+  try {
+    const resp = await fetch(`${API}/estimate/all`);
+    const data = await resp.json();
+
+    updateTime();
+
+    for (const fund of data.funds) {
+      if (fund.error) {
+        updateEstimateCell(fund.code, fund);
+        continue;
+      }
+      updateEstimateCell(fund.code, fund);
+
+      // 更新导航日期
+      const navDateEl = document.getElementById(`nav-date-${fund.code}`);
+      if (navDateEl) navDateEl.textContent = fund.nav_date || '--';
+    }
+  } catch (e) {
+    console.error('刷新估值失败:', e);
+  } finally {
+    loading.style.display = 'none';
+  }
+}
+
+function updateEstimateCell(code, fund) {
+  if (fund.error) {
+    setCell(`est-nav-${code}`, '--');
+    setCell(`change-cell-${code}`, `<span style="color:var(--text-secondary)">${fund.error}</span>`);
+    setCell(`real-change-cell-${code}`, '<span style="color:var(--text-secondary)">--</span>');
+    return;
+  }
+
+  // 估算净值
+  const estNavEl = document.getElementById(`est-nav-${code}`);
+  if (estNavEl) {
+    estNavEl.textContent = fund.estimated_nav ? fund.estimated_nav.toFixed(4) : '--';
+  }
+
+  // 估算涨跌幅
+  const change = fund.change_pct || 0;
+  const changeClass = change > 0 ? 'change-positive' : change < 0 ? 'change-negative' : 'change-zero';
+  const changeSign = change > 0 ? '+' : '';
+  setCell(`change-cell-${code}`,
+    `<span class="${changeClass}">${changeSign}${change.toFixed(2)}%</span>`);
+
+  // 真实涨跌幅
+  const real = fund.real_change_pct || 0;
+  const realSign = real > 0 ? '+' : '';
+  const realClass = real > 0 ? 'change-positive' : real < 0 ? 'change-negative' : 'change-zero';
+  setCell(`real-change-cell-${code}`,
+    `<span class="${realClass}">${realSign}${real.toFixed(2)}%</span>`);
+
+  // 加仓提醒
+  if (fund.alert) {
+    setCell(`alert-cell-${code}`,
+      `<span class="alert-badge" title="${escHtml(fund.alert_reason)}">⚠️ 关注加仓</span>`);
+    const row = document.querySelector(`tr.fund-row[data-code="${code}"]`);
+    if (row) row.classList.add('alert-row');
+  } else {
+    setCell(`alert-cell-${code}`, '<span style="color:var(--text-secondary);font-size:12px;">正常</span>');
+    const row = document.querySelector(`tr.fund-row[data-code="${code}"]`);
+    if (row) row.classList.remove('alert-row');
+  }
+}
+
+function setCell(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+
+// ========== 展开/收起持仓详情 ==========
+let detailCache = {};
+async function toggleDetail(code) {
+  const detail = document.getElementById(`detail-${code}`);
+  const btn = document.getElementById(`expand-btn-${code}`);
+  if (!detail) return;
+
+  if (detail.classList.contains('open')) {
+    detail.classList.remove('open');
+    if (btn) btn.textContent = '📋 持仓';
+    return;
+  }
+
+  detail.classList.add('open');
+  if (btn) btn.textContent = '📋 收起';
+
+  // 加载持仓详情
+  if (!detailCache[code]) {
+    const grid = document.getElementById(`holdings-grid-${code}`);
+    if (grid) grid.innerHTML = '<span style="color:var(--text-secondary)">加载中...</span>';
+
+    try {
+      const resp = await fetch(`${API}/estimate/${code}`);
+      const data = await resp.json();
+      detailCache[code] = data;
+
+      // 估值拆解
+      const disc = data.disclosed_contribution || 0;
+      const undisc = data.undisclosed_contribution || 0;
+      const discSign = disc >= 0 ? '+' : '';
+      const undiscSign = undisc >= 0 ? '+' : '';
+
+      // 风格权重
+      let styleHtml = '';
+      if (data.style_weights && Object.keys(data.style_weights).length > 0) {
+        styleHtml = '<div style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">'
+          + '📊 风格推断: ' + Object.entries(data.style_weights).map(([k,v]) => `${k} ${(v*100).toFixed(0)}%`).join(' | ')
+          + '</div>';
+      }
+
+      // 指数行情
+      let idxHtml = '';
+      if (data.index_quotes && Object.keys(data.index_quotes).length > 0) {
+        idxHtml = '<div style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">'
+          + '📈 参考指数: ' + Object.entries(data.index_quotes).map(([k,v]) => {
+            const c = v.change_pct;
+            const sign = c >= 0 ? '+' : '';
+            return `${k} ${sign}${c}%`;
+          }).join(' | ')
+          + '</div>';
+      }
+
+      if (grid) {
+        grid.innerHTML = `
+          <div style="grid-column:1/-1;display:flex;gap:16px;font-size:13px;margin-bottom:8px;padding:8px 12px;background:#fff;border-radius:4px;border:1px solid var(--border);">
+            <div>🧩 前十大: <b style="color:${disc>=0?'var(--positive)':'var(--negative)'}">${discSign}${disc.toFixed(2)}%</b></div>
+            <div>🔮 风格补全: <b style="color:${undisc>=0?'var(--positive)':'var(--negative)'}">${undiscSign}${undisc.toFixed(2)}%</b></div>
+            <div>📐 合计: <b>${(disc+undisc>=0?'+':'')}${(disc+undisc).toFixed(2)}%</b></div>
+            <div style="color:var(--text-secondary)">(覆盖: ${data.coverage}%)</div>
+          </div>
+          ${styleHtml}
+          ${idxHtml}
+          ${data.details.map(d => `
+          <div class="holding-item">
+            <span class="stock-name">${escHtml(d.name || d.code)} <span style="font-size:11px;color:var(--text-secondary)">${d.code}</span></span>
+            <span>
+              <span class="stock-weight">${d.weight.toFixed(2)}%</span>
+              <span style="margin-left:8px;${d.change_pct > 0 ? 'color:var(--positive)' : d.change_pct < 0 ? 'color:var(--negative)' : 'color:var(--text-secondary)'}">
+                ${d.change_pct != null ? (d.change_pct > 0 ? '+' : '') + d.change_pct.toFixed(2) + '%' : '--'}
+              </span>
+              ${d.industry ? `<span style="margin-left:6px;font-size:10px;color:var(--text-secondary);background:var(--primary-light);padding:1px 5px;border-radius:3px;">${escHtml(d.industry)}</span>` : ''}
+            </span>
+          </div>
+          `).join('')}`;
+      }
+    } catch (e) {
+      if (grid) grid.innerHTML = `<span style="color:var(--negative)">加载失败: ${e.message}</span>`;
+    }
+  }
+}
+
+// ========== 删除基金 ==========
+async function removeFund(code) {
+  if (!confirm(`确定要删除基金 ${code} 吗？`)) return;
+
+  try {
+    const resp = await fetch(`${API}/funds/${code}`, { method: 'DELETE' });
+    if (!resp.ok) throw new Error('删除失败');
+    showStatus(`✓ 已删除`, 'success');
+
+    // 清理 DOM
+    const row = document.querySelector(`tr.fund-row[data-code="${code}"]`);
+    const detailRow = row ? row.nextElementSibling : null;
+    if (row) row.remove();
+    if (detailRow && detailRow.classList.contains('detail-row')) detailRow.remove();
+    delete detailCache[code];
+
+    // 检查是否为空
+    const tbody = document.getElementById('fund-tbody');
+    if (!tbody.querySelector('tr.fund-row')) {
+      document.getElementById('empty-state').style.display = 'block';
+    }
+  } catch (e) {
+    showStatus(`✗ ${e.message}`, 'error');
+  }
+}
+
+// ========== 输入框回车事件 ==========
+document.getElementById('fund-code-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') addFund();
+});
+
+// ========== 自动刷新 ==========
+function setAutoRefresh() {
+  const interval = parseInt(document.getElementById('auto-refresh').value);
+  if (refreshTimer) clearInterval(refreshTimer);
+  if (interval > 0) {
+    refreshTimer = setInterval(refreshAll, interval * 1000);
+  }
+}
+
+// ========== 工具函数 ==========
+function escHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.className = `status-msg show ${type}`;
+  setTimeout(() => { el.className = 'status-msg'; }, 3000);
+}
+
+function clearStatus() {
+  const el = document.getElementById('status-msg');
+  el.className = 'status-msg';
+}
+
+function updateTime() {
+  const now = new Date();
+  document.getElementById('update-time').textContent =
+    now.toLocaleTimeString('zh-CN', { hour12: false });
+}
+
+// ========== 板块新闻（手动刷新，懒加载） ==========
+let newsCache = {};
+
+async function showThemeNews(code, theme) {
+  if (!theme || theme === '识别中...' || theme === '未知' || theme === '综合') return;
+
+  const panel = document.getElementById(`news-${code}`);
+  const list = document.getElementById(`news-list-${code}`);
+  const header = document.getElementById(`news-header-${code}`);
+  if (!panel || !list) return;
+
+  // 切换关闭
+  if (panel.classList.contains('open')) {
+    panel.classList.remove('open');
+    return;
+  }
+
+  panel.classList.add('open');
+  panel.dataset.currentTheme = theme;
+  header.innerHTML = `📰 ${theme} · 最新资讯 <span class="theme-news-refresh" onclick="event.stopPropagation();refreshNews('${code}')">🔄 刷新</span>`;
+  list.innerHTML = '<li class="theme-news-loading">加载中...</li>';
+
+  // 缓存命中直接渲染
+  const cacheKey = `${code}-${theme}`;
+  if (newsCache[cacheKey]) {
+    renderNews(list, newsCache[cacheKey]);
+    return;
+  }
+
+  await fetchNews(code, theme);
+}
+
+async function refreshNews(code) {
+  const panel = document.getElementById(`news-${code}`);
+  const theme = panel ? panel.dataset.currentTheme : '';
+  if (!theme) return;
+  const cacheKey = `${code}-${theme}`;
+  delete newsCache[cacheKey];  // 清除缓存
+  const list = document.getElementById(`news-list-${code}`);
+  if (list) list.innerHTML = '<li class="theme-news-loading">刷新中...</li>';
+  await fetchNews(code, theme);
+}
+
+async function fetchNews(code, theme) {
+  const list = document.getElementById(`news-list-${code}`);
+  const cacheKey = `${code}-${theme}`;
+  const header = document.getElementById(`news-header-${code}`);
+
+  // 优先使用 AI 分类新闻，回退到 Google RSS
+  try {
+    const resp = await fetch(`${API}/news/classified?theme=${encodeURIComponent(theme)}`);
+    const data = await resp.json();
+    if (data.news && data.news.length > 0) {
+      newsCache[cacheKey] = data.news;
+      if (header) header.innerHTML = `🤖 ${theme} · AI 分类 <span class="theme-news-refresh" onclick="event.stopPropagation();refreshNews('${code}')">🔄 刷新</span>`;
+      renderClassifiedNews(list, data.news);
+      return;
+    }
+  } catch (e) { /* fallback */ }
+
+  // 回退到 Google RSS
+  try {
+    const resp = await fetch(`${API}/news?keyword=${encodeURIComponent(theme)}`);
+    const data = await resp.json();
+    newsCache[cacheKey] = data.news || [];
+    if (header) header.innerHTML = `📰 ${theme} · 资讯 <span class="theme-news-refresh" onclick="event.stopPropagation();refreshNews('${code}')">🔄 刷新</span>`;
+    renderNews(list, newsCache[cacheKey]);
+  } catch (e) {
+    list.innerHTML = `<li style="color:var(--negative);font-size:13px;">加载失败: ${e.message}</li>`;
+  }
+}
+
+function renderClassifiedNews(list, items) {
+  if (!items.length) {
+    list.innerHTML = '<li style="color:var(--text-secondary);font-size:13px;">暂无AI分类资讯 · 等待交易日刷新</li>';
+    return;
+  }
+  list.innerHTML = items.slice(0, 10).map(item => {
+    const time = (item.publish_time || '').slice(0, 16);
+    const srcLabel = item.source || '';
+    const extraThemes = (item.themes || []).filter(t => t !== (item._theme || '')).join(' · ');
+    return `<li class="theme-news-item">
+      <span class="theme-news-time">${escHtml(time)} ${srcLabel ? '·'+escHtml(srcLabel) : ''}</span>
+      <div style="font-size:13px;">${escHtml(item.title || '')}</div>
+      ${extraThemes ? `<div style="font-size:11px;color:var(--primary);margin-top:2px;">🏷️ ${escHtml(extraThemes)}</div>` : ''}
+    </li>`;
+  }).join('');
+}
+
+function renderNews(list, items) {
+  if (!items.length) {
+    list.innerHTML = '<li style="color:var(--text-secondary);font-size:13px;">暂无相关资讯</li>';
+    return;
+  }
+  list.innerHTML = items.slice(0, 10).map(item => {
+    // Google News RSS 格式: "Wed, 20 May 2026 11:51:00 GMT" 或 epoch 时间戳
+    let time = '';
+    const raw = item.time || '';
+    if (raw && !isNaN(raw)) {
+      time = new Date(parseInt(raw) * 1000).toLocaleDateString('zh-CN');
+    } else if (raw) {
+      const d = new Date(raw);
+      time = isNaN(d.getTime()) ? raw.slice(0, 16) : d.toLocaleDateString('zh-CN');
+    }
+    return `<li class="theme-news-item">
+      <span class="theme-news-time">${escHtml(time)}</span>
+      <a href="${escHtml(item.url || '#')}" target="_blank">${escHtml(item.title || '')}</a>
+    </li>`;
+  }).join('');
+}
+
+// 事件委托：点击主题标签
+document.addEventListener('click', (e) => {
+  const sector = e.target.closest('.fund-sector');
+  if (!sector) return;
+  const theme = sector.dataset.theme;
+  const code = sector.dataset.code;
+  if (theme && code) showThemeNews(code, theme);
+});
+
+// AI 新闻全局刷新
+async function refreshAINews() {
+  const btn = document.getElementById('ai-news-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 分类中...';
+  try {
+    const resp = await fetch(`${API}/news/refresh`, { method: 'POST' });
+    const data = await resp.json();
+    showStatus(`🤖 AI新闻刷新完成: ${data.total}条 → ${data.classified}条分类 (${data.elapsed_seconds}s)`, 'ok');
+    // 清缓存
+    newsCache = {};
+  } catch (e) {
+    showStatus(`AI新闻刷新失败: ${e.message}`, 'error');
+  }
+  btn.disabled = false;
+  btn.textContent = '🤖 刷新AI新闻';
+}
+async function init() {
+  await loadFunds();
+  await refreshAll();
+  setAutoRefresh();
+  updateTime();
+}
+
+init();
+</script>
+</body>
+</html>
