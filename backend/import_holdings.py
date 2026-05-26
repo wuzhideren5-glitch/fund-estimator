@@ -104,8 +104,8 @@ async def import_all():
         for i, h in enumerate(HOLDINGS_DATA):
             code = h["fundCode"]
             name = h["fundName"]
-            av = float(h["assetValue"])
-            dp = float(h["dailyProfit"])
+            av_str = h["assetValue"]; av = float(av_str) if av_str not in ("--", "") else 0
+            dp_str = h["dailyProfit"]; dp = float(dp_str) if dp_str not in ("--", "") else 0
             hp_str = h.get("holdProfit", "0").replace(",", "") or "0"
             hp = float(hp_str) if hp_str != "--" else 0
             hpr = h.get("holdProfitRate", "")
