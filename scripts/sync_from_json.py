@@ -26,7 +26,7 @@ def normalize_holding(item: dict) -> dict:
         "holdProfit": str(item.get("holdProfit", item.get("hold_profit", item.get("holdProfit", 0)))).replace(",", ""),
         "holdProfitRate": str(item.get("holdProfitRate", item.get("hold_profit_rate", item.get("holdProfitRate", "--")))),
         "dailyProfit": str(item.get("dailyProfit", item.get("daily_profit", item.get("dailyProfit", 0)))),
-        "ptype": str(item.get("ptype", "fund")),
+        "ptype": str(item.get("ptype", item.get("pType", "fund"))),
     }
 
 
@@ -37,10 +37,12 @@ def extract_holdings(data: dict | list) -> list[dict]:
 
     # 尝试多种可能的嵌套路径
     for path in [
+        ["data", "raw_result", "body", "holding_list_result"],
         ["data", "holdings"],
         ["data", "items"],
         ["data", "funds"],
         ["data", "result"],
+        ["holding_list_result"],
         ["holdings"],
         ["result"],
     ]:
@@ -111,9 +113,13 @@ def main():
     normalized = [normalize_holding(h) for h in holdings]
 
     # 计算汇总
-    total_asset = sum(float(h["assetValue"]) for h in normalized)
-    total_profit = sum(float(h["holdProfit"]) for h in normalized)
-    total_daily = sum(float(h["dailyProfit"]) for h in normalized)
+    def safe_float(v):
+        try: return float(v)
+        except (ValueError, TypeError): return 0.0
+    
+    total_asset = sum(safe_float(h["assetValue"]) for h in normalized)
+    total_profit = sum(safe_float(h["holdProfit"]) for h in normalized)
+    total_daily = sum(safe_float(h["dailyProfit"]) for h in normalized)
     rate = total_profit / (total_asset - total_profit) * 100 if total_asset != total_profit else 0
 
     print(f"📦 持仓: {len(normalized)} 只")

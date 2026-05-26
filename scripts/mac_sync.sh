@@ -26,28 +26,8 @@ fi
 
 # Step 2: 从天天基金拉取持仓
 echo "📥 拉取最新持仓..."
-echo ""
-echo "    ⚠️ 请在下方命令中填入正确的 skill_id 和参数。"
-echo "    如果你不确定，可以把 ttskill 支持的命令贴给我，我帮你拼接。"
-echo ""
-echo "    参考命令:"
-echo '    ttskill signed-invoke \'
-echo '      --skill-id FUND_HOLDINGS \'
-echo '      --data '"'"'{}'"'"' \'
-echo "      > $JSON_FILE"
-echo ""
-
-# Step 2b: 如果 JSON 文件已存在（手动放置），跳过拉取
-if [ -f "$JSON_FILE" ]; then
-    echo "📄 检测到已有持仓文件: $JSON_FILE"
-    echo "   如需重新拉取，请删除此文件后重试。"
-else
-    echo "   请在终端中运行 ttskill 命令，将输出保存到:"
-    echo "   $JSON_FILE"
-    echo ""
-    echo "   完成后按 Enter 继续..."
-    read -r
-fi
+ttskill invoke ACCOUNT_HOLDING --action holding_list --body '{}' > "$JSON_FILE"
+echo "✅ 持仓数据已保存到 $JSON_FILE"
 
 # Step 3: 运行同步脚本
 if [ ! -f "$JSON_FILE" ]; then
