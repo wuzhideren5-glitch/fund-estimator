@@ -46,9 +46,33 @@ _load_env()
 NEWS_SOURCES = ['sina', '10jqka', 'eastmoney', 'cls', 'wallstreetcn']
 
 # 分类设置
-MAX_NEWS_PER_RUN = 200  # 每次最多取 200 条
-DEEPSEEK_BATCH_SIZE = 50  # DeepSeek 每批处理新闻数
+MAX_NEWS_PER_RUN = 300  # 每次最多取 300 条
+DEEPSEEK_BATCH_SIZE = 30  # DeepSeek 每批处理新闻数（max_tokens=8192 安全容量）
 NEWS_MAX_AGE_HOURS = 48  # 只保留 48 小时内新闻
+
+# 关键词预过滤：只发包含这些关键词的新闻给 DeepSeek 分类
+# 大幅减少无效 API 消耗，提高分类命中率
+KEYWORD_FILTER = [
+    # 行业/板块关键词
+    "半导体", "芯片", "晶圆", "光刻", "EDA", "台积电", "中芯", "英伟达",
+    "电池", "锂电", "储能", "宁德", "固态电池", "钠电池",
+    "锂矿", "碳酸锂", "盐湖", "锂资源",
+    "AI", "人工智能", "大模型", "算力", "GPT", "DeepSeek", "智能驾驶",
+    "新能源车", "比亚迪", "特斯拉", "汽车",
+    "光伏", "风电", "绿电", "电力",
+    "机器人", "具身智能", "人形",
+    "光模块", "光通信", "CPO",
+    "5G", "通信", "基站",
+    "猪肉", "生猪", "养殖", "牧原",
+    "铜", "铝", "稀土", "黄金", "白银", "有色",
+    "港股", "恒生", "中概",
+    "美股", "纳斯达克", "美联储",
+    "红利", "高股息", "分红",
+    "量化",
+    "创新药", "医药", "CRO",
+    # A股大盘关键词（确保指数级新闻也进入）
+    "A股", "创业板", "科创板", "上证", "深证", "北交所",
+]
 
 # ===== DeepSeek 分类 =====
 
@@ -108,7 +132,7 @@ async def classify_news_batch(
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0,
         "response_format": {"type": "json_object"},
-        "max_tokens": 2048,
+        "max_tokens": 8192,
     }
 
     try:
@@ -132,8 +156,15 @@ async def classify_news_batch(
             print(f"[classifier] batch#{batch_idx} {len(news_batch)}条新闻, {tokens} tokens")
 
             result = json.loads(content)
-            return result.get("results", [])
+            results = result.get("results", [])
+            matched = sum(1 for r in results if r.get("themes"))
+            print(f"[classifier] batch#{batch_idx}: {len(news_batch)}条→{matched}条匹配, {tokens} tokens")
+            return results
 
+    except json.JSONDecodeError as e:
+        print(f"[classifier] batch#{batch_idx} JSON解析失败: {e}")
+        print(f"[classifier] 响应前200字符: {content[:200]}")
+        return [{"id": i, "themes": []} for i in range(len(news_batch))]
     except Exception as e:
         print(f"[classifier] batch#{batch_idx} 异常: {e}")
         return [{"id": i, "themes": []} for i in range(len(news_batch))]
@@ -191,6 +222,19 @@ async def refresh_news(db) -> Dict:
     print("[news] 从 Tushare 获取新闻...")
     raw_news = fetch_news_from_tushare()
     print(f"[news] 去重后 {len(raw_news)} 条")
+
+    # 1.5 关键词预过滤：只保留与投资主题相关的新闻
+    if KEYWORD_FILTER:
+        filtered_news = []
+        for news in raw_news:
+            title_lower = news['title'].lower()
+            for kw in KEYWORD_FILTER:
+                if kw.lower() in title_lower:
+                    filtered_news.append(news)
+                    break
+        skipped = len(raw_news) - len(filtered_news)
+        print(f"[news] 关键词过滤: {len(filtered_news)}/{len(raw_news)} 条通过 (跳过 {skipped} 条非主题新闻)")
+        raw_news = filtered_news
 
     if not raw_news:
         return {"status": "empty", "total": 0, "classified": 0}
