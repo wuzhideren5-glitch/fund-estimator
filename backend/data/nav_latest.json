@@ -275,8 +275,8 @@
     "nav_date": "2026-06-25",
     "nav": 5.2701,
     "acc_nav": 0.0,
-    "estimated_nav": 5.2684,
-    "change_pct": -0.03,
+    "estimated_nav": 5.268,
+    "change_pct": -0.04,
     "source": "fundgz"
   },
   {
@@ -338,5 +338,15 @@
     "estimated_nav": 1.5874,
     "change_pct": -0.33,
     "source": "eastmoney"
+  },
+  {
+    "fundCode": "hqb",
+    "fundName": "活期宝",
+    "nav_date": "2026-06-28",
+    "nav": 1.0,
+    "acc_nav": 1.0,
+    "estimated_nav": 1.0,
+    "change_pct": 0,
+    "source": "hqb"
   }
 ]
