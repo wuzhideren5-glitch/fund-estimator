@@ -1,113 +1,38 @@
-"""
-批量导入持仓 + 更新估值引擎
-用法: python3 import_holdings.py
-"""
-from __future__ import annotations
-
-import asyncio
-import json
-import os
-import sys
-import subprocess
-import aiosqlite
-
-sys.path.insert(0, os.path.dirname(__file__))
-
-DB_PATH = os.path.join(os.path.dirname(__file__), "fund_estimator.db")
-
-# 从 ttskill 拉取的实际持仓数据
 HOLDINGS_DATA = [
-    # 2026-07-02 通过 ttskill invoke ACCOUNT_HOLDING 拉取
-    {"fundName": "财通成长优选混合C", "fundCode": "021528", "assetValue": "40193.88", "holdProfit": "11546.95", "holdProfitRate": "40.31%", "constantProfit": "11546.95", "constantProfitRate": "40.31%", "dailyProfit": "-363.00", "ptype": "fund"},
-    {"fundName": "活期宝", "fundCode": "hqb", "assetValue": "39313.72", "holdProfit": "--", "holdProfitRate": "--", "constantProfit": "--", "constantProfitRate": "--", "dailyProfit": "--", "ptype": "hqb"},
-    {"fundName": "永赢制造升级智选混合发起C", "fundCode": "024203", "assetValue": "34589.36", "holdProfit": "6659.69", "holdProfitRate": "23.84%", "constantProfit": "5947.89", "constantProfitRate": "20.77%", "dailyProfit": "-644.27", "ptype": "fund"},
-    {"fundName": "鹏华碳中和主题混合C", "fundCode": "016531", "assetValue": "29923.28", "holdProfit": "-4152.74", "holdProfitRate": "-12.19%", "constantProfit": "-4152.73", "constantProfitRate": "-12.19%", "dailyProfit": "1087.32", "ptype": "fund"},
-    {"fundName": "德邦鑫星价值灵活配置混合C", "fundCode": "002112", "assetValue": "28705.60", "holdProfit": "20432.88", "holdProfitRate": "280.95%", "constantProfit": "5043.18", "constantProfitRate": "22.25%", "dailyProfit": "-1433.24", "ptype": "fund"},
-    {"fundName": "南方创业板ETF联接A", "fundCode": "002656", "assetValue": "23471.14", "holdProfit": "7384.86", "holdProfitRate": "45.91%", "constantProfit": "6471.15", "constantProfitRate": "38.07%", "dailyProfit": "-428.57", "ptype": "fund"},
-    {"fundName": "东方阿尔法科技优选混合发起C", "fundCode": "024424", "assetValue": "22196.22", "holdProfit": "5186.22", "holdProfitRate": "43.18%", "constantProfit": "5186.22", "constantProfitRate": "43.18%", "dailyProfit": "-287.85", "ptype": "fund"},
-    {"fundName": "泰信发展主题混合", "fundCode": "290008", "assetValue": "18157.35", "holdProfit": "3915.74", "holdProfitRate": "29.57%", "constantProfit": "-1207.25", "constantProfitRate": "-6.57%", "dailyProfit": "550.99", "ptype": "fund"},
-    {"fundName": "汇添富科创芯片ETF联接A", "fundCode": "020628", "assetValue": "16598.13", "holdProfit": "14718.75", "holdProfitRate": "783.17%", "constantProfit": "8048.13", "constantProfitRate": "94.13%", "dailyProfit": "-437.38", "ptype": "fund"},
-    {"fundName": "交银优择回报灵活配置混合C", "fundCode": "519771", "assetValue": "14339.30", "holdProfit": "7973.57", "holdProfitRate": "125.26%", "constantProfit": "6339.32", "constantProfitRate": "79.24%", "dailyProfit": "-471.22", "ptype": "fund"},
-    {"fundName": "华泰柏瑞质量成长C", "fundCode": "011452", "assetValue": "13795.11", "holdProfit": "3833.98", "holdProfitRate": "38.49%", "constantProfit": "2175.59", "constantProfitRate": "18.72%", "dailyProfit": "-531.41", "ptype": "fund"},
-    {"fundName": "华夏科创50ETF联接C", "fundCode": "011613", "assetValue": "13749.10", "holdProfit": "3110.68", "holdProfitRate": "29.24%", "constantProfit": "3005.79", "constantProfitRate": "27.98%", "dailyProfit": "-333.48", "ptype": "fund"},
-    {"fundName": "银华集成电路混合C", "fundCode": "013841", "assetValue": "13382.46", "holdProfit": "4372.46", "holdProfitRate": "48.53%", "constantProfit": "4372.46", "constantProfitRate": "48.53%", "dailyProfit": "-183.29", "ptype": "fund"},
-    {"fundName": "摩根纳斯达克100指数(QDII)人民币C", "fundCode": "019173", "assetValue": "13086.76", "holdProfit": "2547.12", "holdProfitRate": "24.24%", "constantProfit": "2451.78", "constantProfitRate": "23.12%", "dailyProfit": "186.66", "ptype": "fund"},
-    {"fundName": "南方信息创新混合C", "fundCode": "007491", "assetValue": "12639.50", "holdProfit": "3629.50", "holdProfitRate": "40.28%", "constantProfit": "3629.50", "constantProfitRate": "40.28%", "dailyProfit": "-184.43", "ptype": "fund"},
-    {"fundName": "东方人工智能主题混合C", "fundCode": "017811", "assetValue": "12430.80", "holdProfit": "4649.73", "holdProfitRate": "80.43%", "constantProfit": "3558.31", "constantProfitRate": "51.78%", "dailyProfit": "-143.44", "ptype": "fund"},
-    {"fundName": "永赢先锋半导体智选混合发起C", "fundCode": "025209", "assetValue": "12072.78", "holdProfit": "4072.78", "holdProfitRate": "50.91%", "constantProfit": "4072.79", "constantProfitRate": "50.91%", "dailyProfit": "-130.21", "ptype": "fund"},
-    {"fundName": "华宝中证稀有金属指数增强发起C", "fundCode": "013943", "assetValue": "11767.91", "holdProfit": "-232.09", "holdProfitRate": "-1.93%", "constantProfit": "-232.09", "constantProfitRate": "-1.93%", "dailyProfit": "34.44", "ptype": "fund"},
-    {"fundName": "华夏中证电网设备主题ETF发起式联接C", "fundCode": "025857", "assetValue": "11709.37", "holdProfit": "1864.21", "holdProfitRate": "18.94%", "constantProfit": "446.63", "constantProfitRate": "3.97%", "dailyProfit": "-366.00", "ptype": "fund"},
-    {"fundName": "博时创业板指数C", "fundCode": "010786", "assetValue": "10673.87", "holdProfit": "8389.08", "holdProfitRate": "367.17%", "constantProfit": "2235.45", "constantProfitRate": "26.49%", "dailyProfit": "-193.58", "ptype": "fund"},
-    {"fundName": "财通品质甄选混合C", "fundCode": "024481", "assetValue": "9588.07", "holdProfit": "1888.07", "holdProfitRate": "24.52%", "constantProfit": "1888.08", "constantProfitRate": "24.52%", "dailyProfit": "-120.95", "ptype": "fund"},
-    {"fundName": "华夏中证机床ETF发起式联接C", "fundCode": "017574", "assetValue": "8814.17", "holdProfit": "1654.45", "holdProfitRate": "23.11%", "constantProfit": "785.86", "constantProfitRate": "9.79%", "dailyProfit": "-82.72", "ptype": "fund"},
-    {"fundName": "华泰柏瑞中证2000指数增强C", "fundCode": "019924", "assetValue": "8603.49", "holdProfit": "-276.67", "holdProfitRate": "-3.12%", "constantProfit": "-276.67", "constantProfitRate": "-3.12%", "dailyProfit": "111.46", "ptype": "fund"},
-    {"fundName": "宏利半导体产业混合发起C", "fundCode": "021511", "assetValue": "6538.24", "holdProfit": "1538.24", "holdProfitRate": "30.76%", "constantProfit": "1538.24", "constantProfitRate": "30.76%", "dailyProfit": "-150.96", "ptype": "fund"},
-    {"fundName": "华夏国证半导体芯片ETF联接C", "fundCode": "008888", "assetValue": "5748.51", "holdProfit": "302.96", "holdProfitRate": "5.56%", "constantProfit": "1254.45", "constantProfitRate": "27.91%", "dailyProfit": "-128.66", "ptype": "fund"},
-    {"fundName": "华夏半导体材料设备ETF联接C", "fundCode": "020357", "assetValue": "5118.87", "holdProfit": "1608.87", "holdProfitRate": "45.84%", "constantProfit": "1608.87", "constantProfitRate": "45.84%", "dailyProfit": "33.92", "ptype": "fund"},
-    {"fundName": "华夏中证5G通信主题ETF联接D", "fundCode": "023765", "assetValue": "5038.44", "holdProfit": "38.44", "holdProfitRate": "0.77%", "constantProfit": "38.44", "constantProfitRate": "0.77%", "dailyProfit": "-214.87", "ptype": "fund"},
-    {"fundName": "富国创新科技混合C", "fundCode": "011120", "assetValue": "1961.02", "holdProfit": "-38.98", "holdProfitRate": "-1.95%", "constantProfit": "-38.98", "constantProfitRate": "-1.95%", "dailyProfit": "-96.71", "ptype": "fund"},
-    {"fundName": "易方达全球成长精选混合(QDII)人民币A", "fundCode": "012920", "assetValue": "1575.77", "holdProfit": "725.77", "holdProfitRate": "85.38%", "constantProfit": "725.77", "constantProfitRate": "85.38%", "dailyProfit": "64.78", "ptype": "fund"},
-    {"fundName": "招商中证半导体产业ETF发起式联接C", "fundCode": "020465", "assetValue": "1363.49", "holdProfit": "500.51", "holdProfitRate": "58.00%", "constantProfit": "352.66", "constantProfitRate": "34.89%", "dailyProfit": "-9.88", "ptype": "fund"},
-    {"fundName": "东方阿尔法科技甄选混合发起C", "fundCode": "025793", "assetValue": "1103.00", "holdProfit": "93.00", "holdProfitRate": "9.21%", "constantProfit": "93.00", "constantProfitRate": "9.21%", "dailyProfit": "-4.58", "ptype": "fund"},
-    {"fundName": "大成科技创新混合C", "fundCode": "008989", "assetValue": "1031.17", "holdProfit": "21.17", "holdProfitRate": "2.10%", "constantProfit": "21.17", "constantProfitRate": "2.10%", "dailyProfit": "-26.86", "ptype": "fund"},
-    {"fundName": "国投瑞银白银期货(LOF)A", "fundCode": "161226", "assetValue": "165.67", "holdProfit": "-134.33", "holdProfitRate": "-44.78%", "constantProfit": "-134.33", "constantProfitRate": "-44.78%", "dailyProfit": "3.08", "ptype": "fund"},
-    {"fundName": "泰康半导体量化选股股票发起式C", "fundCode": "020477", "assetValue": "10.00", "holdProfit": "0.00", "holdProfitRate": "--", "constantProfit": "0.00", "constantProfitRate": "--", "dailyProfit": "0.00", "ptype": "fund"},
-    {"fundName": "信澳匠心回报混合C", "fundCode": "017836", "assetValue": "10.00", "holdProfit": "0.00", "holdProfitRate": "--", "constantProfit": "0.00", "constantProfitRate": "--", "dailyProfit": "0.00", "ptype": "fund"},
-    {"fundName": "永赢科技智选混合发起C", "fundCode": "022365", "assetValue": "0.00", "holdProfit": "0.00", "holdProfitRate": "--", "constantProfit": "0.00", "constantProfitRate": "--", "dailyProfit": "-10.68", "ptype": "fund"},
+    # 2026-07-06 通过 ttskill invoke ACCOUNT_HOLDING 拉取
+    {"fundName": "财通成长优选混合C", "fundCode": "021528", "assetValue": "37653.44", "holdProfit": "8906.51", "holdProfitRate": "30.98%", "constantProfit": "8906.52", "constantProfitRate": "30.98%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "永赢制造升级智选混合发起C", "fundCode": "024203", "assetValue": "32932.39", "holdProfit": "5002.72", "holdProfitRate": "17.91%", "constantProfit": "4290.92", "constantProfitRate": "14.98%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "鹏华碳中和主题混合C", "fundCode": "016531", "assetValue": "32612.79", "holdProfit": "-1463.23", "holdProfitRate": "-4.29%", "constantProfit": "-1463.23", "constantProfitRate": "-4.29%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "德邦鑫星价值灵活配置混合C", "fundCode": "002112", "assetValue": "27294.39", "holdProfit": "18021.67", "holdProfitRate": "194.35%", "constantProfit": "2631.98", "constantProfitRate": "10.67%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "南方创业板ETF联接A", "fundCode": "002656", "assetValue": "23213.89", "holdProfit": "6127.61", "holdProfitRate": "35.86%", "constantProfit": "5213.89", "constantProfitRate": "28.97%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "东方阿尔法科技优选混合发起C", "fundCode": "024424", "assetValue": "20860.26", "holdProfit": "2850.26", "holdProfitRate": "15.83%", "constantProfit": "2850.26", "constantProfitRate": "15.83%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "活期宝", "fundCode": "hqb", "assetValue": "19111.80", "holdProfit": "--", "holdProfitRate": "--", "constantProfit": "--", "constantProfitRate": "--", "dailyProfit": "--", "ptype": "hqb"},
+    {"fundName": "泰信发展主题混合", "fundCode": "290008", "assetValue": "17873.74", "holdProfit": "3632.13", "holdProfitRate": "25.50%", "constantProfit": "-1490.86", "constantProfitRate": "-7.70%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "银华集成电路混合C", "fundCode": "013841", "assetValue": "16702.87", "holdProfit": "2692.87", "holdProfitRate": "19.22%", "constantProfit": "2692.87", "constantProfitRate": "19.22%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "汇添富科创芯片ETF联接A", "fundCode": "020628", "assetValue": "16156.30", "holdProfit": "13276.92", "holdProfitRate": "461.10%", "constantProfit": "6606.30", "constantProfitRate": "69.18%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "华夏科创50ETF联接C", "fundCode": "011613", "assetValue": "14638.42", "holdProfit": "2000.00", "holdProfitRate": "15.82%", "constantProfit": "1895.12", "constantProfitRate": "14.87%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "交银优择回报灵活配置混合C", "fundCode": "519771", "assetValue": "14334.67", "holdProfit": "6968.94", "holdProfitRate": "94.61%", "constantProfit": "5334.69", "constantProfitRate": "59.27%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "华泰柏瑞质量成长C", "fundCode": "011452", "assetValue": "13826.09", "holdProfit": "2864.96", "holdProfitRate": "26.14%", "constantProfit": "1206.56", "constantProfitRate": "9.56%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "摩根纳斯达克100指数(QDII)人民币C", "fundCode": "019173", "assetValue": "12718.64", "holdProfit": "2169.00", "holdProfitRate": "20.60%", "constantProfit": "2073.66", "constantProfitRate": "19.52%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "南方信息创新混合C", "fundCode": "007491", "assetValue": "12628.76", "holdProfit": "2118.76", "holdProfitRate": "20.16%", "constantProfit": "2118.76", "constantProfitRate": "20.16%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "永赢先锋半导体智选混合发起C", "fundCode": "025209", "assetValue": "12539.25", "holdProfit": "3539.25", "holdProfitRate": "39.32%", "constantProfit": "3539.25", "constantProfitRate": "39.33%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "东方人工智能主题混合C", "fundCode": "017811", "assetValue": "12000.20", "holdProfit": "3219.13", "holdProfitRate": "36.66%", "constantProfit": "2127.71", "constantProfitRate": "21.55%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "华宝中证稀有金属指数增强发起C", "fundCode": "013943", "assetValue": "11497.07", "holdProfit": "-502.93", "holdProfitRate": "-4.19%", "constantProfit": "-502.93", "constantProfitRate": "-4.19%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "华夏中证电网设备主题ETF发起式联接C", "fundCode": "025857", "assetValue": "11327.35", "holdProfit": "1482.19", "holdProfitRate": "15.06%", "constantProfit": "64.61", "constantProfitRate": "0.57%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "博时创业板指数C", "fundCode": "010786", "assetValue": "10107.27", "holdProfit": "7822.48", "holdProfitRate": "342.37%", "constantProfit": "1668.85", "constantProfitRate": "19.78%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "财通品质甄选混合C", "fundCode": "024481", "assetValue": "9022.13", "holdProfit": "1222.13", "holdProfitRate": "15.67%", "constantProfit": "1222.13", "constantProfitRate": "15.67%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "华夏中证机床ETF发起式联接C", "fundCode": "017574", "assetValue": "8681.48", "holdProfit": "1521.76", "holdProfitRate": "21.25%", "constantProfit": "653.17", "constantProfitRate": "8.14%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "华泰柏瑞中证2000指数增强C", "fundCode": "019924", "assetValue": "8501.43", "holdProfit": "-378.73", "holdProfitRate": "-4.26%", "constantProfit": "-378.73", "constantProfitRate": "-4.26%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "华夏国证半导体芯片ETF联接C", "fundCode": "008888", "assetValue": "6206.77", "holdProfit": "-238.78", "holdProfitRate": "-3.70%", "constantProfit": "712.72", "constantProfitRate": "12.97%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "宏利半导体产业混合发起C", "fundCode": "021511", "assetValue": "5941.31", "holdProfit": "941.31", "holdProfitRate": "18.83%", "constantProfit": "941.31", "constantProfitRate": "18.83%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "华夏中证5G通信主题ETF联接D", "fundCode": "023765", "assetValue": "5724.03", "holdProfit": "-275.97", "holdProfitRate": "-4.60%", "constantProfit": "-275.97", "constantProfitRate": "-4.60%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "华夏半导体材料设备ETF联接C", "fundCode": "020357", "assetValue": "5498.11", "holdProfit": "988.11", "holdProfitRate": "21.91%", "constantProfit": "988.11", "constantProfitRate": "21.91%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "富国创新科技混合C", "fundCode": "011120", "assetValue": "1828.52", "holdProfit": "-171.48", "holdProfitRate": "-8.57%", "constantProfit": "-171.48", "constantProfitRate": "-8.57%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "招商中证半导体产业ETF发起式联接C", "fundCode": "020465", "assetValue": "1710.85", "holdProfit": "347.87", "holdProfitRate": "25.52%", "constantProfit": "200.03", "constantProfitRate": "13.24%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "易方达全球成长精选混合(QDII)人民币A", "fundCode": "012920", "assetValue": "1379.58", "holdProfit": "529.58", "holdProfitRate": "62.30%", "constantProfit": "529.58", "constantProfitRate": "62.30%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "东方阿尔法科技甄选混合发起C", "fundCode": "025793", "assetValue": "995.47", "holdProfit": "-14.53", "holdProfitRate": "-1.44%", "constantProfit": "-14.53", "constantProfitRate": "-1.44%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "大成科技创新混合C", "fundCode": "008989", "assetValue": "957.60", "holdProfit": "-52.40", "holdProfitRate": "-5.19%", "constantProfit": "-52.40", "constantProfitRate": "-5.19%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "国投瑞银白银期货(LOF)A", "fundCode": "161226", "assetValue": "173.71", "holdProfit": "-126.29", "holdProfitRate": "-42.10%", "constantProfit": "-126.29", "constantProfitRate": "-42.10%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "信澳匠心回报混合C", "fundCode": "017836", "assetValue": "9.80", "holdProfit": "-0.20", "holdProfitRate": "-2.00%", "constantProfit": "-0.20", "constantProfitRate": "-2.00%", "dailyProfit": "0.00", "ptype": "fund"},
+    {"fundName": "泰康半导体量化选股股票发起式C", "fundCode": "020477", "assetValue": "9.21", "holdProfit": "-0.79", "holdProfitRate": "-7.90%", "constantProfit": "-0.79", "constantProfitRate": "-7.90%", "dailyProfit": "0.00", "ptype": "fund"},
 ]
-
-
-def load_holdings():
-    """返回基金持仓列表（排除活期宝）"""
-    return [h for h in HOLDINGS_DATA if h["ptype"] == "fund"]
-
-
-async def main():
-    """主入口：读取持仓并写入数据库"""
-    funds = load_holdings()
-    if not funds:
-        print("⚠️ 无有效基金持仓")
-        return
-
-    async with aiosqlite.connect(DB_PATH) as db:
-        # 确保表存在
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS funds (
-                code TEXT PRIMARY KEY,
-                name TEXT,
-                nav REAL DEFAULT 0,
-                nav_date TEXT,
-                acc_nav REAL DEFAULT 0,
-                updated_at TEXT DEFAULT (datetime('now'))
-            )
-        """)
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS nav_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                fund_code TEXT NOT NULL,
-                date TEXT NOT NULL,
-                nav REAL,
-                acc_nav REAL,
-                UNIQUE(fund_code, date)
-            )
-        """)
-
-        for f in funds:
-            code = f["fundCode"]
-            name = f["fundName"]
-            asset = float(f["assetValue"])
-
-            # 插入或更新基金基本信息
-            await db.execute("""
-                INSERT INTO funds (code, name, nav, updated_at)
-                VALUES (?, ?, 0, datetime('now'))
-                ON CONFLICT(code) DO UPDATE SET name=?, updated_at=datetime('now')
-            """, [code, name, name])
-
-        await db.commit()
-
-    print(f"✅ 已导入 {len(funds)} 只基金持仓")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
