@@ -1,299 +1,299 @@
 [
   {
-    "fundCode": "002112",
-    "fundName": "德邦鑫星价值灵活配置混合C",
-    "nav_date": "2026-08-14",
-    "nav": 5.1411,
-    "acc_nav": 5.2891,
-    "estimated_nav": 5.1411,
-    "change_pct": 3.47
-  },
-  {
-    "fundCode": "002656",
-    "fundName": "南方创业板ETF联接A",
-    "nav_date": "2026-08-14",
-    "nav": 1.8687,
-    "acc_nav": 1.8687,
-    "estimated_nav": 1.8687,
-    "change_pct": 1.08
-  },
-  {
-    "fundCode": "007491",
-    "fundName": "南方信息创新混合C",
-    "nav_date": "2026-08-14",
-    "nav": 4.964,
-    "acc_nav": 4.964,
-    "estimated_nav": 4.964,
-    "change_pct": -0.16
-  },
-  {
-    "fundCode": "008327",
-    "fundName": "东财通信C",
-    "nav_date": "2026-08-14",
-    "nav": 4.4806,
-    "acc_nav": 4.4806,
-    "estimated_nav": 4.4806,
-    "change_pct": 2.84
-  },
-  {
-    "fundCode": "008888",
-    "fundName": "华夏国证半导体芯片ETF联接C",
-    "nav_date": "2026-08-14",
-    "nav": 2.0462,
-    "acc_nav": 2.0462,
-    "estimated_nav": 2.0462,
-    "change_pct": 0.81
-  },
-  {
-    "fundCode": "008989",
-    "fundName": "大成科技创新混合C",
-    "nav_date": "2026-08-14",
-    "nav": 4.5843,
-    "acc_nav": 4.5843,
-    "estimated_nav": 4.5843,
-    "change_pct": 1.44
-  },
-  {
-    "fundCode": "010786",
-    "fundName": "博时创业板指数C",
-    "nav_date": "2026-08-14",
-    "nav": 1.2345,
-    "acc_nav": 1.2345,
-    "estimated_nav": 1.2345,
-    "change_pct": 1.07
-  },
-  {
-    "fundCode": "011120",
-    "fundName": "富国创新科技混合C",
-    "nav_date": "2026-08-14",
-    "nav": 4.319,
-    "acc_nav": 4.319,
-    "estimated_nav": 4.319,
-    "change_pct": 3.5
-  },
-  {
-    "fundCode": "011613",
-    "fundName": "华夏科创50ETF联接C",
-    "nav_date": "2026-08-14",
-    "nav": 1.3511,
-    "acc_nav": 1.3511,
-    "estimated_nav": 1.3511,
-    "change_pct": 0.0
-  },
-  {
-    "fundCode": "012920",
-    "fundName": "易方达全球成长精选混合(QDII)人民币A",
-    "nav_date": "2026-08-13",
-    "nav": 3.9505,
-    "acc_nav": 3.9505,
-    "estimated_nav": 3.9505,
-    "change_pct": 0.52
-  },
-  {
-    "fundCode": "013841",
-    "fundName": "银华集成电路混合C",
-    "nav_date": "2026-08-14",
-    "nav": 3.1887,
-    "acc_nav": 3.1887,
-    "estimated_nav": 3.1887,
-    "change_pct": -0.61
-  },
-  {
-    "fundCode": "013943",
-    "fundName": "华宝中证稀有金属指数增强发起C",
-    "nav_date": "2026-08-14",
-    "nav": 1.0992,
-    "acc_nav": 1.0992,
-    "estimated_nav": 1.0992,
-    "change_pct": 2.16
-  },
-  {
-    "fundCode": "016531",
-    "fundName": "鹏华碳中和主题混合C",
-    "nav_date": "2026-08-14",
-    "nav": 1.5119,
-    "acc_nav": 1.5119,
-    "estimated_nav": 1.5119,
-    "change_pct": -0.38
-  },
-  {
-    "fundCode": "016814",
-    "fundName": "国联中证煤炭指数C",
-    "nav_date": "2026-08-14",
-    "nav": 2.096,
-    "acc_nav": 2.096,
-    "estimated_nav": 2.096,
-    "change_pct": 1.6
-  },
-  {
-    "fundCode": "017811",
-    "fundName": "东方人工智能主题混合C",
-    "nav_date": "2026-08-14",
-    "nav": 3.3999,
-    "acc_nav": 3.3999,
-    "estimated_nav": 3.3999,
-    "change_pct": 0.0
-  },
-  {
-    "fundCode": "017836",
-    "fundName": "信澳匠心回报混合C",
-    "nav_date": "2026-08-14",
-    "nav": 2.1257,
-    "acc_nav": 2.1257,
-    "estimated_nav": 2.1257,
-    "change_pct": -0.01
-  },
-  {
-    "fundCode": "019173",
-    "fundName": "摩根纳斯达克100指数(QDII)人民币C",
-    "nav_date": "2026-08-13",
-    "nav": 1.7711,
-    "acc_nav": 1.7711,
-    "estimated_nav": 1.7711,
-    "change_pct": 1.08
-  },
-  {
-    "fundCode": "019924",
-    "fundName": "华泰柏瑞中证2000指数增强C",
-    "nav_date": "2026-08-14",
-    "nav": 1.8962,
-    "acc_nav": 1.8962,
-    "estimated_nav": 1.8962,
-    "change_pct": 1.04
-  },
-  {
-    "fundCode": "020357",
-    "fundName": "华夏半导体材料设备ETF联接C",
-    "nav_date": "2026-08-14",
-    "nav": 3.5287,
-    "acc_nav": 3.5287,
-    "estimated_nav": 3.5287,
-    "change_pct": 0.7
-  },
-  {
-    "fundCode": "020465",
-    "fundName": "招商中证半导体产业ETF发起式联接C",
-    "nav_date": "2026-08-14",
-    "nav": 3.7903,
-    "acc_nav": 3.7903,
-    "estimated_nav": 3.7903,
-    "change_pct": 0.22
-  },
-  {
-    "fundCode": "020477",
-    "fundName": "泰康半导体量化选股股票发起式C",
-    "nav_date": "2026-08-14",
-    "nav": 3.2644,
-    "acc_nav": 3.2644,
-    "estimated_nav": 3.2644,
-    "change_pct": 0.83
-  },
-  {
-    "fundCode": "020628",
-    "fundName": "汇添富科创芯片ETF联接A",
-    "nav_date": "2026-08-14",
-    "nav": 3.5512,
-    "acc_nav": 3.5512,
-    "estimated_nav": 3.5512,
-    "change_pct": 0.41
-  },
-  {
-    "fundCode": "021511",
-    "fundName": "宏利半导体产业混合发起C",
-    "nav_date": "2026-08-14",
-    "nav": 2.7215,
-    "acc_nav": 2.7215,
-    "estimated_nav": 2.7215,
-    "change_pct": -0.21
-  },
-  {
     "fundCode": "021528",
     "fundName": "财通成长优选混合C",
-    "nav_date": "2026-08-14",
-    "nav": 4.501,
-    "acc_nav": 4.501,
-    "estimated_nav": 4.501,
-    "change_pct": 2.53
-  },
-  {
-    "fundCode": "023765",
-    "fundName": "华夏中证5G通信主题ETF联接D",
-    "nav_date": "2026-08-14",
-    "nav": 3.0101,
-    "acc_nav": 3.0101,
-    "estimated_nav": 3.0101,
-    "change_pct": 2.33
+    "nav_date": "2026-09-11",
+    "nav": 4.333,
+    "acc_nav": 4.333,
+    "estimated_nav": 4.333,
+    "change_pct": 1.31
   },
   {
     "fundCode": "024203",
     "fundName": "永赢制造升级智选混合发起C",
-    "nav_date": "2026-08-14",
-    "nav": 1.3753,
-    "acc_nav": 1.3753,
-    "estimated_nav": 1.3753,
-    "change_pct": 1.21
+    "nav_date": "2026-09-11",
+    "nav": 1.365,
+    "acc_nav": 1.365,
+    "estimated_nav": 1.365,
+    "change_pct": -0.63
+  },
+  {
+    "fundCode": "002112",
+    "fundName": "德邦鑫星价值灵活配置混合C",
+    "nav_date": "2026-09-11",
+    "nav": 5.0826,
+    "acc_nav": 5.2306,
+    "estimated_nav": 5.0826,
+    "change_pct": -1.52
   },
   {
     "fundCode": "024424",
     "fundName": "东方阿尔法科技优选混合发起C",
-    "nav_date": "2026-08-14",
-    "nav": 1.9617,
-    "acc_nav": 1.9617,
-    "estimated_nav": 1.9617,
-    "change_pct": 0.27
+    "nav_date": "2026-09-11",
+    "nav": 1.7592,
+    "acc_nav": 1.7592,
+    "estimated_nav": 1.7592,
+    "change_pct": -2.06
   },
   {
-    "fundCode": "024481",
-    "fundName": "财通品质甄选混合C",
-    "nav_date": "2026-08-14",
-    "nav": 2.0373,
-    "acc_nav": 2.0373,
-    "estimated_nav": 2.0373,
-    "change_pct": 2.52
+    "fundCode": "002656",
+    "fundName": "南方创业板ETF联接A",
+    "nav_date": "2026-09-11",
+    "nav": 1.7199,
+    "acc_nav": 1.7199,
+    "estimated_nav": 1.7199,
+    "change_pct": -0.46
+  },
+  {
+    "fundCode": "007491",
+    "fundName": "南方信息创新混合C",
+    "nav_date": "2026-09-11",
+    "nav": 4.3875,
+    "acc_nav": 4.3875,
+    "estimated_nav": 4.3875,
+    "change_pct": -2.16
+  },
+  {
+    "fundCode": "013841",
+    "fundName": "银华集成电路混合C",
+    "nav_date": "2026-09-11",
+    "nav": 2.8341,
+    "acc_nav": 2.8341,
+    "estimated_nav": 2.8341,
+    "change_pct": -1.6
+  },
+  {
+    "fundCode": "011613",
+    "fundName": "华夏科创50ETF联接C",
+    "nav_date": "2026-09-11",
+    "nav": 1.2296,
+    "acc_nav": 1.2296,
+    "estimated_nav": 1.2296,
+    "change_pct": -0.99
+  },
+  {
+    "fundCode": "020628",
+    "fundName": "汇添富科创芯片ETF联接A",
+    "nav_date": "2026-09-11",
+    "nav": 3.219,
+    "acc_nav": 3.219,
+    "estimated_nav": 3.219,
+    "change_pct": -1.32
   },
   {
     "fundCode": "025209",
     "fundName": "永赢先锋半导体智选混合发起C",
-    "nav_date": "2026-08-14",
-    "nav": 2.4191,
-    "acc_nav": 2.4191,
-    "estimated_nav": 2.4191,
-    "change_pct": 2.72
+    "nav_date": "2026-09-11",
+    "nav": 2.2705,
+    "acc_nav": 2.2705,
+    "estimated_nav": 2.2705,
+    "change_pct": -1.79
+  },
+  {
+    "fundCode": "019173",
+    "fundName": "摩根纳斯达克100指数(QDII)人民币C",
+    "nav_date": "2026-09-10",
+    "nav": 1.7142,
+    "acc_nav": 1.7142,
+    "estimated_nav": 1.7142,
+    "change_pct": -1.02
+  },
+  {
+    "fundCode": "017811",
+    "fundName": "东方人工智能主题混合C",
+    "nav_date": "2026-09-11",
+    "nav": 3.0545,
+    "acc_nav": 3.0545,
+    "estimated_nav": 3.0545,
+    "change_pct": -1.6
+  },
+  {
+    "fundCode": "010786",
+    "fundName": "博时创业板指数C",
+    "nav_date": "2026-09-11",
+    "nav": 1.1375,
+    "acc_nav": 1.1375,
+    "estimated_nav": 1.1375,
+    "change_pct": -0.46
+  },
+  {
+    "fundCode": "013943",
+    "fundName": "华宝中证稀有金属指数增强发起C",
+    "nav_date": "2026-09-11",
+    "nav": 0.9905,
+    "acc_nav": 0.9905,
+    "estimated_nav": 0.9905,
+    "change_pct": -3.01
+  },
+  {
+    "fundCode": "024481",
+    "fundName": "财通品质甄选混合C",
+    "nav_date": "2026-09-11",
+    "nav": 1.9639,
+    "acc_nav": 1.9639,
+    "estimated_nav": 1.9639,
+    "change_pct": 1.32
+  },
+  {
+    "fundCode": "019924",
+    "fundName": "华泰柏瑞中证2000指数增强C",
+    "nav_date": "2026-09-11",
+    "nav": 1.8562,
+    "acc_nav": 1.8562,
+    "estimated_nav": 1.8562,
+    "change_pct": -1.87
+  },
+  {
+    "fundCode": "021511",
+    "fundName": "宏利半导体产业混合发起C",
+    "nav_date": "2026-09-11",
+    "nav": 2.4028,
+    "acc_nav": 2.4028,
+    "estimated_nav": 2.4028,
+    "change_pct": -1.35
+  },
+  {
+    "fundCode": "008888",
+    "fundName": "华夏国证半导体芯片ETF联接C",
+    "nav_date": "2026-09-11",
+    "nav": 1.8487,
+    "acc_nav": 1.8487,
+    "estimated_nav": 1.8487,
+    "change_pct": -1.29
+  },
+  {
+    "fundCode": "016814",
+    "fundName": "国联中证煤炭指数C",
+    "nav_date": "2026-09-11",
+    "nav": 2.153,
+    "acc_nav": 2.153,
+    "estimated_nav": 2.153,
+    "change_pct": -1.91
+  },
+  {
+    "fundCode": "023765",
+    "fundName": "华夏中证5G通信主题ETF联接D",
+    "nav_date": "2026-09-11",
+    "nav": 2.9436,
+    "acc_nav": 2.9436,
+    "estimated_nav": 2.9436,
+    "change_pct": 0.28
+  },
+  {
+    "fundCode": "008327",
+    "fundName": "东财通信C",
+    "nav_date": "2026-09-11",
+    "nav": 4.4322,
+    "acc_nav": 4.4322,
+    "estimated_nav": 4.4322,
+    "change_pct": 0.46
+  },
+  {
+    "fundCode": "020357",
+    "fundName": "华夏半导体材料设备ETF联接C",
+    "nav_date": "2026-09-11",
+    "nav": 3.1347,
+    "acc_nav": 3.1347,
+    "estimated_nav": 3.1347,
+    "change_pct": -1.55
+  },
+  {
+    "fundCode": "020465",
+    "fundName": "招商中证半导体产业ETF发起式联接C",
+    "nav_date": "2026-09-11",
+    "nav": 3.3842,
+    "acc_nav": 3.3842,
+    "estimated_nav": 3.3842,
+    "change_pct": -1.26
+  },
+  {
+    "fundCode": "011120",
+    "fundName": "富国创新科技混合C",
+    "nav_date": "2026-09-11",
+    "nav": 4.462,
+    "acc_nav": 4.462,
+    "estimated_nav": 4.462,
+    "change_pct": 1.43
+  },
+  {
+    "fundCode": "012920",
+    "fundName": "易方达全球成长精选混合(QDII)人民币A",
+    "nav_date": "2026-09-10",
+    "nav": 3.7134,
+    "acc_nav": 3.7134,
+    "estimated_nav": 3.7134,
+    "change_pct": -1.81
+  },
+  {
+    "fundCode": "008989",
+    "fundName": "大成科技创新混合C",
+    "nav_date": "2026-09-11",
+    "nav": 4.4426,
+    "acc_nav": 4.4426,
+    "estimated_nav": 4.4426,
+    "change_pct": 0.38
   },
   {
     "fundCode": "025793",
     "fundName": "东方阿尔法科技甄选混合发起C",
-    "nav_date": "2026-08-14",
-    "nav": 1.2644,
-    "acc_nav": 1.2644,
-    "estimated_nav": 1.2644,
-    "change_pct": 0.69
+    "nav_date": "2026-09-11",
+    "nav": 1.1882,
+    "acc_nav": 1.1882,
+    "estimated_nav": 1.1882,
+    "change_pct": -0.41
   },
   {
     "fundCode": "161226",
     "fundName": "国投瑞银白银期货(LOF)A",
-    "nav_date": "2026-08-14",
-    "nav": 1.7797,
-    "acc_nav": 1.7797,
-    "estimated_nav": 1.7797,
-    "change_pct": -1.87
+    "nav_date": "2026-09-11",
+    "nav": 1.7689,
+    "acc_nav": 1.7689,
+    "estimated_nav": 1.7689,
+    "change_pct": -4.75
   },
   {
-    "fundCode": "290008",
-    "fundName": "泰信发展主题混合",
-    "nav_date": "2026-08-14",
-    "nav": 1.91,
-    "acc_nav": 2.349,
-    "estimated_nav": 1.91,
-    "change_pct": 1.27
+    "fundCode": "017836",
+    "fundName": "信澳匠心回报混合C",
+    "nav_date": "2026-09-11",
+    "nav": 2.0487,
+    "acc_nav": 2.0487,
+    "estimated_nav": 2.0487,
+    "change_pct": -2.39
+  },
+  {
+    "fundCode": "020477",
+    "fundName": "泰康半导体量化选股股票发起式C",
+    "nav_date": "2026-09-11",
+    "nav": 2.9664,
+    "acc_nav": 2.9664,
+    "estimated_nav": 2.9664,
+    "change_pct": -1.39
   },
   {
     "fundCode": "519771",
     "fundName": "交银优择回报灵活配置混合C",
-    "nav_date": "2026-08-14",
-    "nav": 6.0484,
-    "acc_nav": 6.1234,
-    "estimated_nav": 6.0484,
-    "change_pct": 1.1
+    "nav_date": "2026-09-11",
+    "nav": 5.7545,
+    "acc_nav": 5.8295,
+    "estimated_nav": 5.7545,
+    "change_pct": 0.25
+  },
+  {
+    "fundCode": "290008",
+    "fundName": "泰信发展主题混合",
+    "nav_date": "2026-09-11",
+    "nav": 1.698,
+    "acc_nav": 2.137,
+    "estimated_nav": 1.698,
+    "change_pct": -3.9
+  },
+  {
+    "fundCode": "016531",
+    "fundName": "鹏华碳中和主题混合C",
+    "nav_date": "2026-09-11",
+    "nav": 1.3926,
+    "acc_nav": 1.3926,
+    "estimated_nav": 1.3926,
+    "change_pct": -2.69
   }
 ]
